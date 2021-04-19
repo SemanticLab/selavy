@@ -1,0 +1,82 @@
+<!doctype html>
+<html class="no-js" lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title></title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="apple-touch-icon" href="icon.png">
+  <!-- Place favicon.ico in the root directory -->
+
+<!--   <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/main.css"> -->
+</head>
+
+<body>
+  
+  <div style="text-align: center; margin-top: 5em;">
+    <img src="/html/img/duchamp_spin_small.gif" style=""><br>
+    <span style="font-weight: bold; color: #e17055">Sending the blocks theough the named-entity recognition API.</span><br>
+    <span><span id="status">[...waiting for first update]</span></span>
+
+
+  </div>
+  
+
+  <script>
+
+    function check(){
+
+      document.getElementById('status').innerHTML = 'updating...'
+      fetch('/document/<%-docId%>/status')
+        .then(response => response.json())
+        .then(data => {
+
+          console.log(data)
+          if (data.nerStatus){
+
+            document.getElementById('status').innerHTML = `${data.nerStatus.done} / ${data.nerStatus.todo}`       
+
+            if (data.nerStatus.complete){
+              document.getElementById('status').innerHTML = 'Done'
+              window.location = '/document/<%-docId%>/entity/start'
+            }    
+
+            if (data.nerStatus.enriching){
+              document.getElementById('status').innerHTML = 'Processing NER results'
+            }
+
+
+          }else{
+            document.getElementById('status').innerHTML = '[...waiting for first update]'
+          }
+
+
+
+
+
+        });
+
+
+    }
+
+
+    check()
+    window.setInterval(()=>{
+
+      check()
+
+    },2000)
+
+
+
+  </script>
+
+</body>
+
+</html>

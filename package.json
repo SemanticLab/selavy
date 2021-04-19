@@ -1,0 +1,36 @@
+{
+  "name": "pomodoro",
+  "version": "0.0.1",
+  "description": "Its a mee",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm install && nodemon --ignore 'tmp/*' ./index.js",
+    "start": "forever ./index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thisismattmiller/pomodoro.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thisismattmiller/pomodoro/issues"
+  },
+  "homepage": "https://github.com/thisismattmiller/pomodoro#readme",
+  "dependencies": {
+    "@google-cloud/language": "^4.2.1",
+    "@google-cloud/vision": "^2.1.2",
+    "body-parser": "^1.19.0",
+    "ejs": "^3.1.5",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.2.0",
+    "express-session": "^1.17.1",
+    "got": "^11.8.1",
+    "image-size": "^0.9.3",
+    "nodemon": "^2.0.6",
+    "request": "^2.88.2",
+    "request-promise-native": "^1.0.9",
+    "uuid": "^8.3.2",
+    "wikibase-edit": "^4.11.8"
+  }
+}

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" class="keep-it-100">
+<head>
+
+
+
+
+    <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+    <link rel="stylesheet" type="text/css" href="/html/css/all.min.css" >
+
+    
+    <script type="text/javascript" src="/html/js/vue.js"></script>
+
+    <style>
+    	.types-li{
+    		display: inline-block;
+    		margin-right: 1em;
+    	}
+    	.td-wiki-img{
+    		height: 100px;
+    		width: 100px;
+    	}
+    	.wiki-img{
+    		height: 100px;
+    		width: 100px;
+    		background-size: cover;
+    	}
+		
+
+    	thead td{
+    		vertical-align: bottom !important;
+    	}
+    </style>
+
+
+
+</head>
+<body class="container is-fluid keep-it-100">
+
+
+
+    <script>
+    	var docId = "<%- docId %>";
+    </script>
+
+
+
+
+    <div id="app">
+	    <h2 class="is-size-2" style="float: left;">NER Entities</h2>
+
+	    <div style="float: right; margin-top: 0.75em">
+		    <button class="button" :disabled="docClean == true" @click="save">
+				<span class="icon" style="pointer-events: none">
+				  <i class="fas fa-cloud-upload-alt"></i>
+				</span>
+				<span>Save</span>
+			</button>
+
+
+			
+		    <button class="button" @click="next" :disabled="docClean == false">
+				<span class="icon" style="pointer-events: none">
+				  <i class="fas fa-arrow-right"></i>
+				</span>
+				<span>Next</span>
+			</button>
+		</div>
+	    <hr style="clear:both;">
+
+	  {{ message }}
+
+
+	  <ul>
+
+	  	<li class="types-li" v-for="key in Object.keys(filters).sort()">
+	  		<button v-bind:class="[{ 'is-dark': (activeFilter == key) }, 'button']" @click="filter" :value="key">{{key}} ({{filters[key]}})</button>
+	  	</li>
+	  </ul>
+
+
+	  <table class="table is-striped is-hoverable is-fullwidth">
+	  	<thead>
+	  		<td>Label</td>
+	  		<td>Count</td>
+	  		<td>Wikidata?</td>
+	  		<td>Semlab?</td>
+	  		<td>Possible Semlab?</td>
+	  		<td>
+
+
+	  			<button @click="toggleAll" v-if="discardAll" class="button">
+					<span class="icon">
+					  <i class="fas fa-trash-alt"></i>
+					</span>
+					<span>Discard All</span>
+				</button>
+				<button @click="toggleAll" v-else class="button is-dark">
+					<span class="icon">
+					  <i class="fas fa-recycle fa-inverse"></i>
+					</span>
+					<span>Restore All</span>
+				</button>
+
+	  		</td>
+	  	</thead>
+	  	<tbody>
+		  	<tr v-for="e in entitiesFiltered">
+
+		  		<td>{{e.nerName}}</td>
+		  		<td>{{e.totalFoundCount}}</td>
+		  		<td v-bind:class="[{ 'td-wiki-img': (e.wiki && e.wiki.image) }]">
+		  			<div v-if="e.wiki && e.wiki.image" class="wiki-img" v-bind:style="{ 'background-image': 'url(' + e.wiki.image + ')' }"  >
+
+		  			</div>
+		  			<a target="_blank" v-if="e.wiki && e.wiki.wikidata" :href="'http://www.wikidata.org/entity/' + e.wiki.wikidata">Wikidata</a>
+		  		</td>
+		  		<td>
+					<a target="_blank" v-if="e.wiki && e.wiki.semlab" :href="'http://base.semlab.io/entity/' + e.wiki.semlab">Semlab</a>
+		  		</td>
+
+		  		<td>
+
+		  			<div v-if="e.semlabBaseSearch.length>0">
+
+		  				<div v-if="e.wiki && e.wiki.semlab">
+		  					<details>
+   								<summary>Change Selection</summary>
+
+				  				<ul>
+				  					<li v-for="r in e.semlabBaseSearch">
+
+				  						
+				  						<input  v-on:click="possibleSemlabSelect" :data-eid="e.eId" type="radio" :id="'e'+ e.eId" :name="'e'+ e.eId" :value="r.qid">
+				  						<a :href="'http://base.semlab.io/entity/'+r.qid" target="_blank">
+					  						<span :title="r.label" v-if="r.label.length>20">{{r.label.substring(0,20)}}...</span>
+					  						<span v-else>
+					  							{{r.label}}
+					  						</span>
+				  						</a>
+				  						</input>
+
+				  						
+
+				  					</li>
+				  					<li><input v-on:change="possibleSemlabSelect" :data-eid="e.eId" type="radio" id="huey" :name="'e'+ e.eId" :value="null"> None of these</li>
+				  				</ul>
+
+		  					</details>
+		  				</div>
+		  				<div v-else>
+
+			  				<ul>
+			  					<li v-for="r in e.semlabBaseSearch">
+
+			  						
+			  						<input  v-on:click="possibleSemlabSelect" :data-eid="e.eId" type="radio" :id="'e'+ e.eId" :name="'e'+ e.eId" :value="r.qid">
+			  						<a :href="'http://base.semlab.io/entity/'+r.qid" target="_blank">
+				  						<span :title="r.label" v-if="r.label.length>20">{{r.label.substring(0,20)}}...</span>
+				  						<span v-else>
+				  							{{r.label}}
+				  						</span>
+			  						</a>
+			  						</input>
+
+			  						
+
+			  					</li>
+			  					<li><input v-on:change="possibleSemlabSelect" :data-eid="e.eId" type="radio" id="huey" :name="'e'+ e.eId" :value="null"> None of these</li>
+			  				</ul>		  					
+
+		  				</div>
+		  				
+
+
+		  			</div>
+		  		</td>
+		  		<td>
+					<button v-if="!e.isDiscarded" :data-eid="e.eId" @click="singleDiscard" class="button">
+						<span class="icon">
+						  <i class="fas fa-trash-alt"></i>
+						</span>
+						<span>Discard</span>
+					</button>
+					<button v-else :data-eid="e.eId" @click="singleDiscard" class="button is-dark">
+						<span class="icon">
+						  <i class="fas fa-recycle fa-inverse"></i>
+						</span>
+						<span>Restore</span>
+					</button>
+					
+		  		</td>
+
+		  	</tr>
+		</tbody>
+
+
+	  </table>
+
+
+	</div>
+
+
+
+<script type="text/javascript">
+			
+
+	var app = new Vue({
+	  el: '#app',
+	  data: {
+	    message: 'Loading Entities!',
+	    entities: [],
+	    entitiesFiltered: [],
+	    filters: {},
+	    activeFilter: 'PERSON',
+	    discardAll: true,
+	    docClean: true,
+
+	  },
+	  created: function(){
+
+	  	let self = this
+
+		fetch(`/document/${docId}/entities/data`)
+		  .then(response => response.json())
+		  .then(data => {
+		  	console.log(self)
+
+		  	for (let d of Object.keys(data)){
+		  		d = data[d]
+		  		if (!d.isDiscarded){
+		  			d.isDiscarded = false
+		  		}
+		  		if (!self.filters[d.eType]){
+		  			self.filters[d.eType]=0
+		  		} 
+		  		self.filters[d.eType]++
+		  	}
+
+		  	console.log(self.filters)
+
+		  	self.entities = data
+		  	// console.log(data)
+		  	self.filter({target:{value:self.activeFilter}})
+		  	self.message = ''
+
+		  });	
+
+
+	  },
+	  methods: {
+
+	  	filter: function(event){
+
+	  		// they changed the filter manually
+	  		if (event.target.tagName){
+	  			this.discardAll=true
+	  		}
+
+
+	  		this.entitiesFiltered = []
+	  		this.activeFilter=event.target.value
+
+
+		  	for (let d of Object.keys(this.entities)){
+		  		d = this.entities[d]
+		  		
+		  		if (d.eType == this.activeFilter){
+		  			this.entitiesFiltered.push(d)
+		  		}
+		  	}
+
+	  	},
+
+
+	  	possibleSemlabSelect: function(event){
+
+		  	
+		  	for (let d of Object.keys(this.entities)){
+		  		d = this.entities[d]
+		  		
+		  		if (d.eId == parseInt(event.target.dataset.eid)){
+		  			if (!d.wiki){
+		  				d.wiki = {}
+		  			}
+		  			if (event.target.value == ""){
+		  				d.wiki.semlab = null
+		  				d.wiki.noSemlabMatch = true
+		  			}else{
+		  				d.wiki.semlab = event.target.value
+		  				// if it is dicarded also flip it back
+		  				d.isDiscarded = false
+		  			}
+		  		}
+		  	}
+
+	  		this.filter({target:{value:this.activeFilter}})
+	  		this.docClean=false
+
+	  	},
+
+	  	singleDiscard: function(event){
+
+	  		let eId
+	  		if (event.target.tagName.toUpperCase() =='SPAN'){
+	  			eId = parseInt(event.target.parentNode.dataset.eid)
+	  		}
+	  		if (event.target.tagName.toUpperCase() =='I'){
+	  			eId = parseInt(event.target.parentNode.parentNode.dataset.eid)
+	  		}
+
+	  		if (event.target.tagName.toUpperCase() =='BUTTON'){
+	  			eId = parseInt(event.target.dataset.eid)
+	  			console.log(event.target.tagName.toUpperCase(),eId,event.target.dataset,event.target)
+	  		}
+
+	  		
+
+	  		let opacity = 1
+		  	for (let d of Object.keys(this.entities)){
+		  		d = this.entities[d]
+		  		if (d.eId == eId){
+		  			if (d.isDiscarded){
+		  				d.isDiscarded = false
+		  			}else{
+		  				d.isDiscarded = true
+		  				opacity = 0.25
+		  			}
+		  		}
+		  	}
+
+	  		if (event.target.tagName.toUpperCase() =='SPAN'){
+	  			event.target.parentNode.parentNode.parentNode.style.opacity = opacity
+	  		}
+	  		if (event.target.tagName.toUpperCase() =='I'){
+	  			event.target.parentNode.parentNode.parentNode.parentNode.style.opacity = opacity
+	  		}
+
+	  		if (event.target.tagName.toUpperCase() =='BUTTON'){
+	  			event.target.parentNode.parentNode.style.opacity = opacity
+	  		}
+
+
+
+	  		this.filter({target:{value:this.activeFilter}})
+
+	  		this.docClean=false
+
+
+	  	},
+
+	  	toggleAll: function(){
+
+
+		  	for (let d of Object.keys(this.entities)){
+		  		d = this.entities[d]
+		  		
+		 
+		  		if (d.eType == this.activeFilter){
+		  	
+
+
+			  		if (this.discardAll){
+			  			d.isDiscarded = true
+			  		}else{
+			  			d.isDiscarded = false
+			  		}
+			  	}
+
+		  	}
+
+		  	if (this.discardAll){
+		  		this.discardAll=false
+		  	}else{
+		  		this.discardAll=true
+		  	}
+
+
+	  		this.filter({target:{value:this.activeFilter}})
+	  		this.docClean=false
+
+
+	  	},
+
+
+	  	save: function(event){
+
+
+
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", `/document/${docId}/entities/data`, true);
+			xhr.setRequestHeader('Content-Type', 'application/json');
+			xhr.onload = () => {
+			    // do something to response
+			    this.docClean=true
+			}
+
+			
+			xhr.send(JSON.stringify({
+				id: docId,
+			    entities: this.entities
+			}));
+
+
+
+	  	},
+
+	  	next: function(event){
+
+	  		window.location = `/document/${docId}/instanceof/start`
+
+
+
+	  	}
+
+
+
+	  }
+	})
+
+
+</script>
+
+</body>
+
+
+
+
+</html>

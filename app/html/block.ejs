@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" class="keep-it-100">
+<head>
+
+
+
+
+    <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+    <link rel="stylesheet" type="text/css" href="/html/css/block.css" >
+	<link rel="stylesheet" type="text/css" href="/html/css/all.min.css">
+
+
+
+
+
+
+
+</head>
+<body class="container is-fluid keep-it-100">
+	<form action="/block" method="post" class="keep-it-100" >
+	    <div class="columns keep-it-100">
+
+		  <div class="column keep-it-100 is-one-half" id="blocks-holder">
+		  	<div id="blocks-holder-manual" class="manual-mode-element">
+
+		  	</div>
+		  	<hr class="block-holder-hr manual-mode-element">
+		  	<div id="blocks-holder-manual-temp" class="manual-mode-element">
+
+		  	</div>
+		  	<a class="button is-primary manual-mode-element" id="add-temp-block">Add Block</a>
+		  	<a class="button is-warning manual-mode-element" id="clear-temp-block">Clear</a>
+		  	<hr class="block-holder-hr manual-mode-element">
+		  	<div id="blocks-holder-regex">
+
+		  	</div>
+		  </div>
+		  <div class="column">
+		    <h5>Auto Split</h5>
+		  	<div class="columns regex-buttons">
+
+		  		<div class="column">
+		  			<input class="input" value=".*(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday).*(1903|1904).*" id="add-regex-pattern" type="text" placeholder="Regex">
+		  		</div>
+
+
+		  		<div class="column is-one-fifth">
+		  			<a class="button is-primary" id="add-regex-button">Add</a>
+		  		</div>
+
+		  	</div>
+
+
+			<div id="regex-list">
+
+
+			</div>
+
+			<hr/>
+		    <h5>Manual Split</h5>
+
+			<label class="checkbox">
+			  <input type="checkbox" id="enable-manual-mode">
+			  Enable Manual Split
+			</label>			
+
+			<hr/>
+		    <h5>Block Filters</h5>
+
+
+
+
+		  	<div class="columns regex-buttons">
+
+		  		<div class="column">
+					<div class="select">
+					  <select id="filter-select">
+					    <option>Add a block filter</option>
+						<% for (var key in plugins) { %>
+					    	<option value="<%=plugins[key]%>"><%=plugins[key].replace('.js','').replace(/_/g,' ')%></option>
+						<% } %>
+					  </select>
+					</div>
+
+
+		  		</div>
+
+
+
+
+		  	</div>
+
+
+
+			<div id="filter-list">
+
+
+			</div>
+
+
+			<hr/>
+
+			<a class="button" id="back" href="/document/<%- doc.id%>/clean">Back To Cleaning</a>
+			<button class="button is-link" action="submit" id="done">Finished</button>
+
+
+
+		  </div>
+
+
+
+
+		</div>
+	</form>
+
+
+    <script>
+
+
+
+
+    	function applyFilters(blocks){
+    		var render = false
+
+    		// rebuild the blocks   
+    		if (!blocks){		
+    			blocks = applyBlocks()
+    			render = true
+    		}
+    		// don't filter the source blocks in this mode
+    		if (manualMode && render == true){
+    			return blocks
+    		}
+
+    		var newBlocks = []
+    		filters.forEach((f)=>{
+
+    			blocks.forEach((b)=>{
+    				var text = b.block.join('')
+    				text = window[f.replace('.js','')](text)
+    				b.block = [text]
+    			})
+    		})
+
+    		if (render){
+
+    			renderBlocks(blocks)
+    		}
+
+    		return blocks
+    	}
+
+    	function renderBlocks(blocks){
+
+    		allManualIds = []
+
+    		// render the temp blocks as one block
+    		tempBlock = []
+    		blockLookup = {}
+    		blocks.forEach((b, i)=>{
+    			blockLookup[i.toString()] = b
+    		})
+
+    		manualBlockTemp.forEach((bid)=>{
+    			tempBlock.push(blockLookup[bid].block[0])
+    			allManualIds.push(bid)
+    		})
+
+
+			var block = document.createElement("div")
+			block.classList.add('block')
+			var text = ""
+			var lastLine = ""
+			tempBlock.forEach((line)=>{
+				text = text + line.replace(/\n/g,"↵<br/>")
+			})
+			block.innerHTML = text
+			document.getElementById('blocks-holder-manual-temp').innerHTML=""
+			document.getElementById('blocks-holder-manual-temp').appendChild(block)	
+
+			manualBlockHolder.forEach((b)=>{
+				b.forEach((bb)=>{
+					allManualIds.push(bb)
+				})
+			})
+
+
+			// normal block rendering
+
+
+    		var blockHolder = document.getElementById('blocks-holder-regex')
+    		blockHolder.innerHTML=""
+
+    		blocks.forEach((b, i)=>{
+
+				var block = document.createElement("div")
+				block.classList.add('block')
+				block.setAttribute('id',`block-${i}`)
+
+				if (manualMode && allManualIds.indexOf(i.toString()) == -1){
+					block.classList.add('block-toggleable')
+					block.setAttribute('data-id',`block-${i}`)
+					block.dataset.blockId = i
+					
+					block.addEventListener("click",function(e){
+						
+
+						manualBlockTemp.push(e.target.dataset.blockId)
+
+						renderBlocks(blocks)
+
+					},false);  		
+					
+
+				}
+
+				var text = ""
+				var lastLine = ""
+				b.block.forEach((line)=>{
+					text = text + line.replace(/\n/g,"↵<br/>")
+				})
+
+				block.innerHTML = text
+
+
+				if (allManualIds.indexOf(i.toString()) === -1){
+					blockHolder.appendChild(block)	
+				}
+
+
+
+    		})
+
+
+
+    		// render the manual blocks
+
+    		var blockHolder = document.getElementById('blocks-holder-manual')
+    		blockHolder.innerHTML=""
+
+    		buildManualBlocks().forEach((b, i)=>{
+    			console.log(b,"<<<")
+				var block = document.createElement("div")
+				block.classList.add('block')
+				block.setAttribute('id',`block-${i}`)
+				
+				block.dataset.ids = b.ids
+				var text = ""
+				var lastLine = ""
+				b.block.forEach((line)=>{
+					text = text + line.replace(/\n/g,"↵<br/>")
+				})
+
+				block.addEventListener("click",function(e){
+					
+					var remove = confirm("Are you sure you want to remove this block?")
+					if (remove){
+
+
+
+						var keepBlocks = []
+						manualBlockHolder.forEach((b)=>{
+							if (b.join(',') != e.target.dataset.ids){
+								keepBlocks.push(b)
+							}
+						})
+						manualBlockHolder = keepBlocks
+						renderBlocks(blocks)
+					}
+
+				},false);  	
+
+
+				block.innerHTML = text
+
+
+				//if (allManualIds.indexOf(i.toString()) === -1){
+					console.log(block,"!!!!")
+					blockHolder.appendChild(block)	
+				//}
+
+
+
+    		})
+
+
+
+
+
+    	}
+
+
+    	function buildManualBlocks(){
+    		blockLookup = {}
+    		mb = []
+    		applyBlocks().forEach((b, i)=>{
+    			blockLookup[i.toString()] = b
+    		})
+    		var counter = 0
+
+    		manualBlockHolder.forEach((b)=>{
+
+    			ab = {block: [], id:counter,regex:null, ids:b.join(',')}
+
+    			b.forEach((bb)=>{
+
+    				ab.block.push(blockLookup[bb].block[0])
+
+    			})
+
+    			if (ab.block.length==0){
+    				return false
+    			}
+
+    			counter++
+    			mb.push(ab)
+
+
+    		})
+
+    		// run these boyes through the filters
+    		console.log(mb)
+    		
+    		return applyFilters(mb)
+
+    	}
+
+    	function applyBlocks(){
+
+    		if (regexes.length == 0){
+    			var useRegexs = [new RegExp("\n","g")]
+    		}else{
+    			var useRegexs = regexes.map((r)=> {return new RegExp(r,"g")} )
+    		}
+
+
+    		var lines = textClean.split("\n")
+
+    		var blocks = []
+    		var linesBefore = []
+
+
+    		lines.forEach((line)=>{
+
+
+
+
+    			line = line + '\n'
+    			var hitRegex = false;
+
+    			useRegexs.forEach((re)=>{
+
+    				if (hitRegex) return false
+
+    				if (line.match(re)){
+    					
+    					if (linesBefore.length>0) blocks.push({regex: re, block: linesBefore, id: blocks.length});
+    					linesBefore = []
+    					linesBefore.push(line)
+    					hitRegex = true
+    				}
+
+    			})
+
+    			if (!hitRegex) linesBefore.push(line)
+
+
+
+
+    		})
+
+    		// add in the leftovers
+    		blocks.push({regex: null, block: linesBefore, id: blocks.length})
+
+
+    		
+    		return blocks
+
+
+    	}
+    	function renderFilterList(){
+			document.getElementById('filter-list').innerHTML=""
+
+			var ul = document.createElement("ul")
+
+			filters.forEach((r)=>{
+				var li = document.createElement("li")
+
+				var a = document.createElement("a")
+
+				a.dataset.filter = r
+				a.setAttribute('href','#')
+				a.innerHTML = `
+					<span class="icon has-text-danger">
+					  <i class="fas fa-trash"></i>
+					</span>
+					<span>Remove "${r}" fiter from the blocks.</span>
+				`
+
+				a.addEventListener("click",function(e){
+					var rmfilter = this.dataset.filter
+					filters = filters.filter(r => r != rmfilter)
+					e.preventDefault();
+
+					renderFilterList()
+					
+					renderBlocks(applyBlocks())
+
+					return false
+				},false);  
+
+	    		li.appendChild(a); 
+	    		ul.appendChild(li); 
+
+
+			})
+	    	document.getElementById('filter-list').appendChild(ul); 
+
+
+
+
+
+    	}
+    	function renderRegexList(){
+			document.getElementById('regex-list').innerHTML=""
+
+			var ul = document.createElement("ul")
+
+			regexes.forEach((r)=>{
+				var li = document.createElement("li")
+
+				var a = document.createElement("a")
+
+				a.dataset.regex = btoa(unescape(encodeURIComponent(r)))
+				a.setAttribute('href','#')
+				a.innerHTML = `
+					<span class="icon has-text-danger">
+					  <i class="fas fa-trash"></i>
+					</span>
+					<span>Remove "${r}" regex from the document.</span>
+				`
+
+				a.addEventListener("click",function(e){
+					var rmregex = decodeURIComponent(escape(atob(this.dataset.regex)))
+					regexes = regexes.filter(r => r != rmregex)
+					e.preventDefault();
+
+					renderRegexList()
+					
+					renderBlocks(applyBlocks())
+
+					return false
+				},false);  
+
+	    		li.appendChild(a); 
+	    		ul.appendChild(li); 
+
+
+			})
+	    	document.getElementById('regex-list').appendChild(ul); 
+
+
+
+
+
+    	}
+
+
+
+    	// events
+		document.getElementById("add-regex-button").addEventListener("click",function(e){
+			var pattern = document.getElementById("add-regex-pattern").value;
+
+			
+			regexes.push(pattern)
+			renderRegexList()
+			renderBlocks(applyBlocks())
+
+			e.preventDefault();
+			return false
+		},false);
+
+		
+		document.getElementById("enable-manual-mode").addEventListener("change",function(e){
+			manualMode=this.checked
+			if (this.checked){
+
+			    var el = document.getElementsByClassName("manual-mode-element");
+			    for(var i = 0; i < el.length; i++){
+			        el[i].style.display = "block";
+			    }
+
+
+			}else{
+
+			    var el = document.getElementsByClassName("manual-mode-element");
+			    for(var i = 0; i < el.length; i++){
+			        el[i].style.display = "none";
+			    }
+
+			}
+			regexes = []
+			filters = []
+			renderRegexList()
+			renderFilterList()
+
+			renderBlocks(applyBlocks())
+
+			e.preventDefault();
+			return false
+		},false);
+
+		document.getElementById("filter-select").addEventListener("change",function(e){
+			//var pattern = document.getElementById("add-regex-pattern").value;
+
+			var filter = this.options[this.selectedIndex].value
+
+			if (filter != 'Add a block filter' &&  filters.indexOf(filter) === -1){
+				filters.push(filter)
+			}
+
+			renderFilterList()
+
+			applyFilters()
+			if (manualMode){
+				renderBlocks(applyBlocks())
+			}
+			e.preventDefault();
+			return false
+		},false);
+
+		document.getElementById("done").addEventListener("click",function(e){
+
+			var blocks = applyFilters().map((b)=>{return b.block})
+			var flattendBlocks = []
+			for (let blk of blocks){
+				flattendBlocks.push(blk.join(' '))
+
+			}
+			blocks = flattendBlocks
+			
+			if (manualMode){
+				blocks = []
+				buildManualBlocks().forEach((b)=>{
+					blocks.push(b.block.join(' '))
+				})
+
+			}
+
+
+
+
+			// console.log(blocks)
+
+			// console.log({
+			// 	id: docId,
+			//     blocks: blocks,
+			//     blockRegexes: regexes,
+			//     blockFilters: filters
+			// })
+
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", "/ner", true);
+			xhr.setRequestHeader('Content-Type', 'application/json');
+			xhr.onload = function () {
+			    // do something to response
+
+			    window.location =`/document/${docId}/ner/start`
+
+		
+		
+
+			}
+
+			
+			xhr.send(JSON.stringify({
+				id: docId,
+			    blocks: blocks,
+			    blockRegexes: regexes,
+			    blockFilters: filters
+			}));
+
+
+
+			e.preventDefault();
+			return false
+
+		},false);
+		document.getElementById("clear-temp-block").addEventListener("click",function(e){
+
+			manualBlockTemp=[]
+			renderBlocks(applyBlocks())
+
+			e.preventDefault();
+			return false
+		},false);
+
+		document.getElementById("add-temp-block").addEventListener("click",function(e){
+
+			if (manualBlockTemp.length==0){
+				return false
+			}
+
+			manualBlockHolder.push(manualBlockTemp.slice())
+			console.log(manualBlockHolder)
+			manualBlockTemp=[]
+			renderBlocks(applyBlocks())
+
+			e.preventDefault();
+			return false
+		},false);
+
+
+
+
+
+    	var regexes = []
+    	var filters = []
+
+		var manualMode = false;
+		var manualBlockHolder = [];
+		var manualBlockAdded = [];
+		var manualBlockTemp = []
+		var textClean = `<%= doc.textClean %>`;
+		var plugins = <%- pluginsJson %>;
+		var docId = '<%- doc.id%>';
+		renderBlocks(applyBlocks())
+
+
+
+    </script>
+
+
+</body>
+
+	<script type="application/javascript" src="/html/js/blocks.js"></script>
+	<script type="application/javascript" src="/html/js/palette.js"></script>
+
+	<% for (var key in plugins) { %>
+
+		<script type="application/javascript" src="/html/js/plugins/blocks/<%=plugins[key]%>"></script>
+
+
+	<% } %>
+
+
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html class="no-js" lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title></title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="apple-touch-icon" href="icon.png">
+  <!-- Place favicon.ico in the root directory -->
+    <style type="text/css">
+      body{
+        font-family: sans-serif;
+        background-image: url(/html/img/selavy_logo.png);
+        background-size: contain;
+        background-repeat: no-repeat;
+        
+        padding: 0;
+        margin: 0;
+        padding-top: 45%;
+      }
+
+      h1{
+        color: tomato;
+        margin-left: 0.5em;
+        font-size: 3.5em;
+      }
+
+     
+
+
+    </style>
+</head>
+
+<body>
+
+
+
+
+    <% if (wbVerified || wbDontUse) { %>
+
+    <div style="width: 33%; padding:2em;">
+
+      <div style=" display: flex; ">
+
+        <div style=""> 
+          <div style="margin-bottom: 1em;">Upload text document (text PDF, Word Doc, etc)</div>
+          <form ref='uploadForm' 
+            id='uploadForm' 
+            action='/upload' 
+            method='post' 
+            encType="multipart/form-data">
+              <input type="file" name="file" accept=".pdf,.doc,.docx,.txt,.rtf,.RTF" />
+              <input type='submit' value='Upload!' />
+          </form>   
+        </div>
+
+
+
+
+      </div>
+          <div style=" display: flex; margin-top: 1em; margin-bottom: 1em;">
+            <div style="flex: 4"><hr></div>
+            <div style="flex: 1; text-align: center;">OR</div>
+            <div style="flex: 4"><hr></div>
+          </div>
+
+
+        <div style=""> 
+        <div style="padding-bottom: 0.5em;">If your doucument is an image scan, use <a href="http://pomodoro.semlab.io/" target="_blank">Pomodoro</a> first.</div style="padding-bottom: 0.5em;">
+        <details>
+          <summary>I have the text I want to use ready.</summary>
+
+            <form action="/uploadtext" method="POST">
+              <textarea name="doctext" cols="100" rows="50">Paste your text here</textarea>
+
+
+              <input type="submit" value="Send Text"> </form>
+            </form> 
+
+
+        </details>
+        </div>
+
+
+    </div>
+
+    <% }else{ %>
+
+    <div style="width: 33%; padding:2em;">
+
+      <div style=" display: flex;   height: 300px;">
+
+        <div style=""> 
+          <div style="margin-bottom: 1em;">To get started log in using your <a href="http://base.semlab.io">Semlab Wikibase</a> credentials</div>
+          <% if(error){%>
+            <div style="color:red"><%=error%></div>
+          <%}%>
+          <form action="/" method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <input type="submit" value="Log in">
+          </form> 
+
+          
+          <div style=" display: flex;">
+            <div style="flex: 4"><hr></div>
+            <div style="flex: 1; text-align: center;">OR</div>
+            <div style="flex: 4"><hr></div>
+          </div>
+          <div style="text-align: center;">
+            <form action="/" method="POST">
+              <input type="hidden" name="dontuse" value="true" placeholder="Username">
+
+              <input type="submit" value="I don't want to save my work in Wikibase"> </form>
+            </form> 
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+
+
+    <% } %>    
+
+  
+
+
+
+</body>
+
+</html>

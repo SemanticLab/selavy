@@ -1,2 +1,1 @@
-# selavy-v2
-selavy 2
+# pomodoro

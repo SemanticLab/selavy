@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" class="keep-it-100">
+<head>
+
+    <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+    <link rel="stylesheet" type="text/css" href="/html/css/clean.css" >
+	<link rel="stylesheet" type="text/css" href="/html/css/all.min.css">
+
+
+</head>
+<body class="container is-fluid keep-it-100">
+	<form action="/block" method="post" class="keep-it-100" >
+	    <div class="columns keep-it-100">
+
+		  <div class="column keep-it-100 is-one-half textarea-holder">
+		    <textarea name="text" id="text"><%if (doc.textClean) { %><%= doc.textClean %><% }else{ %><%= doc.orginalText %><% } %></textarea>
+		  </div>
+		  <div class="column">
+		    
+		  	<div class="columns regex-buttons">
+		  		<div class="column">
+		  			<input class="input" value="" id="add-regex-pattern" type="text" placeholder="Regex">
+		  		</div>
+		  		<div class="column">
+		  			<input class="input" id="add-regex-replace" type="text" placeholder="Replace With">
+
+		  		</div>
+		  		<div class="column is-one-fifth">
+		  			<a class="button is-primary" id="add-regex-button">Test</a>
+
+		  		</div>
+
+		  	</div>
+
+
+			<div class="regex-test" id="regex-test-display">
+				Regex pattern matches will appear here
+
+			</div>
+		  	<button class="button is-primary" id="add-regex-button-apply" disabled="disabled">Apply this pattern</button>
+
+			<div id="regex-list">
+
+
+			</div>
+
+
+		    <input type="hidden" name="id" id="id" value="<%= doc.id%>">
+
+
+
+		    <% if (doc.textClean) { %>
+		    	<div style="color:tomato; margin: 20px;">The text has already been processed/cleaned. That cleaned text is being used for further refinement. To use the orignal raw text re-upload the document.</div>
+		    <% } %>
+
+		   	<div style="color:grey; margin: 20px;">Split block keyword: ~BLOCKBREAK~</div>
+
+
+			<button class="button is-link" action="submit" id="done">Finished</button>
+
+
+
+		  </div>
+
+
+
+
+		</div>
+	</form>
+
+
+    <script>
+
+    	var regexes = []
+
+    	function removeRegex(){
+
+
+    		var text = textRaw + ''
+    		// start with the raw text and go through each regex and apply
+    		regexes.forEach((r)=>{
+
+				var re = new RegExp(r.regex,"g");
+
+				var matches = text.match(re)
+
+	    		var replaceCount = 0
+	    		matches.forEach((m)=>{
+	    			if (r.excludeValues.indexOf(m)===-1){
+	    				text = text.split(m).join(r.replace)
+	    				replaceCount++
+	    			}
+
+	    		})
+
+    		})
+
+			document.getElementById("text").value = text
+
+			renderRegexList()
+
+
+
+    	}
+
+    	function renderRegexList(){
+
+
+			document.getElementById('regex-list').innerHTML=""
+
+			var ul = document.createElement("ul")
+
+			regexes.forEach((r)=>{
+				var li = document.createElement("li")
+
+				var a = document.createElement("a")
+
+				a.dataset.regex = btoa(unescape(encodeURIComponent(r.regex)))
+				a.setAttribute('href','#')
+				a.innerHTML = `
+					<span class="icon has-text-danger">
+					  <i class="fas fa-trash"></i>
+					</span>
+					<span>Remove "${r.regex}" regex from the document.</span>
+				`
+
+				a.addEventListener("click",function(e){
+					var rmregex = decodeURIComponent(escape(atob(this.dataset.regex)))
+					regexes = regexes.filter(r => r.regex != rmregex)
+					e.preventDefault();
+
+					removeRegex();
+					return false
+				},false);  
+
+	    		li.appendChild(a); 
+	    		ul.appendChild(li); 
+
+
+			})
+	    	document.getElementById('regex-list').appendChild(ul); 
+
+
+
+
+
+    	}
+
+
+    	function textFilter(pattern, replace){
+
+
+    		// get the values that should be exluded if there
+    		var excludeValues = []
+			Array.prototype.forEach.call(document.getElementsByClassName("add-regex-confirm"), function(el) {
+			    // Do stuff here
+				if (!el.checked) excludeValues.push(decodeURIComponent(escape(atob(el.dataset.match))));
+			});    		
+			console.log(excludeValues)
+
+    		document.getElementById('regex-test-display').innerHTML=""
+
+    		var text = document.getElementById("text").value
+
+    		var re = new RegExp(pattern,"g");
+
+    		var matches = text.match(re)
+
+    		
+
+
+    		if (matches && matches.length>0){
+    			document.getElementById('add-regex-button-apply').removeAttribute("disabled");
+	    		matches.forEach((m)=>{
+	    			var el = document.createElement("div")
+
+	    			var labelHtml = `
+					<label class="checkbox">
+					  <input type="checkbox" class="add-regex-confirm" data-match="${btoa(unescape(encodeURIComponent(m)))}" checked>
+					  ${'"' + m + '"'}
+					</label><br/>`
+
+
+	    			el.innerHTML = labelHtml
+	    			document.getElementById('regex-test-display').appendChild(el); 
+	    		})
+
+
+	    		var replaceCount = 0
+	    		matches.forEach((m)=>{
+	    			if (excludeValues.indexOf(m)===-1){
+	    				// text = text.replace(RegExp(m,"g"),replace)
+	    				text = text.split(m).join(replace)
+	    				replaceCount++
+	    			}
+
+	    		})
+
+
+    		}
+
+
+
+    		return {text: text, replaceCount:replaceCount, pattern: pattern, replace: replace, excludeValues: excludeValues}
+
+
+    	}
+
+
+
+
+    	// events
+		document.getElementById("add-regex-button").addEventListener("click",function(e){
+			var pattern = document.getElementById("add-regex-pattern").value;
+			var replace = document.getElementById("add-regex-replace").value;
+
+			textFilter(pattern,replace)
+			e.preventDefault();
+			return false
+		},false);  
+
+		document.getElementById("add-regex-button-apply").addEventListener("click",function(e){
+			var pattern = document.getElementById("add-regex-pattern").value;
+			var replace = document.getElementById("add-regex-replace").value;
+
+			var newText = textFilter(pattern,replace)
+
+			if (!newText.replaceCount) newText.replaceCount = 0;
+
+			document.getElementById("text").value = newText.text
+    		document.getElementById('regex-test-display').innerHTML=`Replaced ${newText.replaceCount} occurrences.`
+
+    		if (newText.replaceCount > 0){
+    			regexes.push({regex: newText.pattern, replace: newText.replace, excludeValues: newText.excludeValues})
+    			renderRegexList()
+    		}
+			e.preventDefault();
+			return false    		
+		},false);    	
+
+
+
+
+
+		var textRaw = `<%= doc.orginalText %>`;
+
+
+
+
+    </script>
+
+
+</body>
+</html>

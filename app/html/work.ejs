@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en" class="keep-it-100">
+<head>
+
+
+
+
+    <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+    <link rel="stylesheet" type="text/css" href="/html/css/all.min.css" >
+
+    
+    <script type="text/javascript" src="/html/js/vue.js"></script>
+    <script type="text/javascript" src="/html/js/Sortable.min.js"></script>
+    <script type="text/javascript" src="/html/js/vuedraggable.umd.min.js"></script>
+
+
+
+    <script type="application/javascript" src="/html/js/palette.js"></script>
+
+    <style>
+    	
+        .block{
+            font-size: 1.75em;
+            padding: 2px;
+        }
+        .block:hover{
+            border: solid 2px #6c5ce7;
+            padding: 0;
+        }
+
+        .block:nth-child(even) {
+          background-color: whitesmoke;
+          border-radius: 0.2em;
+        }
+
+        .container{
+            margin-left: 16px !important;
+            margin-right: 16px !important;
+        }
+        .sidebar {
+            position: sticky;
+            display: inline-block;
+            /* vertical-align: top; */
+            max-height: 100vh;
+            overflow-y: auto;
+            width: 100%;
+            top: 0;
+            /* bottom: 0; */
+            /* padding: 30px; */
+        }
+        .word-ner-unpublished{
+            border-bottom-style:  dotted;
+            border-bottom-color: #80808047;
+            border-bottom-width: 3px;
+        }
+
+        .word-ner-unpublished:hover{
+            background-color: yellow;
+        }
+        .word:hover{
+            background-color: rgba(255, 255, 0, 0.15);
+
+        }
+        .word-ner-published{
+            padding:1px;
+        }
+        .word-ner-published:hover{
+            border: solid 1px red;
+            padding: 0;
+        }
+        .entity-container{
+            border: solid 1px #dadada;
+            margin: 2px;
+            font-size: 1.25em;     
+            position: relative; 
+            cursor: pointer;      
+        }
+        .entity-container .icon{
+            position: absolute;
+            right: 6px;
+            top: 0px;
+            display: none;
+        }
+
+        .entity-container:hover .icon{
+            display: inline;
+        }
+        .entity-container:hover{
+            background-color: rgba(255, 255, 0, 0.15);
+        }
+
+        .entity-container-label{
+            width: 88%;
+            display: inline-block;
+
+        }
+
+        #sidebar-triples{
+            
+        }
+
+        .triple-block-display{
+            background-color: #e4ffe4;
+            font-size: 0.6em;
+            font-family: monospace;
+        }
+        .triple-block-display a{
+            color: black !important
+        }
+
+        .paint-possible{
+            transition-property: all;
+            transition-duration: 500ms;
+
+        }
+
+
+        .cursor-paint{
+        
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'  width='40' height='48' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🖍</text></svg>") 0 16,auto; /*!emojicursor.app*/
+
+        }
+        .cursor-remove-paint{
+        
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'  width='40' height='48' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🪓</text></svg>") 0 16,auto; /*!emojicursor.app*/
+
+        }
+        .cursor-active-predicate{
+        
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'  width='40' height='48' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🅿</text></svg>") 0 16,auto; /*!emojicursor.app*/
+
+        }
+        .cursor-active-object{
+        
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'  width='40' height='48' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🅾</text></svg>") 0 16,auto; /*!emojicursor.app*/
+
+        }
+        
+
+
+        .search-input{
+            font-size: 1.25em;
+            border: none;
+            padding: 0.15em;
+            border-bottom: solid 1px #dadada;
+            width: 99%;
+        }
+
+        .search-input:focus{
+            background-color: rgba(255, 255, 0, 0.15);
+        }
+
+
+        .search-hit{
+            border-top: solid 4px red;
+            border-right: solid 4px red;
+            border-left: solid 4px red;
+        }
+
+
+    </style>
+
+
+
+</head>
+<body class="container is-fluid keep-it-100">
+
+
+
+    <script>
+    	var docId = "<%- docId %>";
+    </script>
+
+
+
+
+    <div id="app">
+	
+
+        <div class="columns">
+          <div class="column is-three-quarters" style="min-height: 2000px;">
+
+
+
+
+            <div>
+
+                <div class="block" v-for="block in activeBlocks">
+                    
+
+
+
+                    <template v-for="word in block.words">
+
+                        <span @click="publishedEntityClick(doc.entities[word.eId],block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner', 'word-ner-published']" :id="'b'+block.id+'-'+word.order" v-if="word.ner && doc.entities[word.eId] && doc.entities[word.eId].published" v-bind:style="{ 'background-color': returnInstanceOfColor(doc.entities[word.eId])}">                            
+                            {{word.contextualText+" "}}
+                        </span>
+                        <span @click="publishEntity(block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner', 'word-ner-unpublished']" :id="'b'+block.id+'-'+word.order" v-else-if="word.ner && doc.entities[word.eId] && !doc.entities[word.eId].published">
+                            {{word.contextualText+" "}}
+                        </span>                        
+                        <span @click="publishEntity(block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner']" :id="'b'+block.id+'-'+word.order" v-else-if="word.ner && !doc.entities[word.eId]">
+                            {{word.contextualText+" "}}
+                        </span>
+                        <span @click="publishEntity(block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word']" :id="'b'+block.id+'-'+word.order" v-else>
+                            {{word.orginalText+" "}}
+                        </span>
+
+
+                    </template>
+
+                    <div class="triple-block-display" :style="{'display': (blockTriples[block.id] && blockTriples[block.id].length >0 ) ? 'block' : 'none'}">
+                        <div v-for="(triple,index) in blockTriples[block.id]">
+                            <button @click="removeBlockTriple(block.id,index,$event)" class="button is-small">x</button>
+                            <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.s.wiki.semlab">{{triple.s.nerName}}</a>&gt;</span>
+                            <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.p.id">{{triple.p.label}}</a>&gt;</span>
+                            <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.o.wiki.semlab">{{triple.o.nerName}}</a>&gt;</span>
+                            <button @click="addContext(block.id, index)" class="button is-small">ctx</button>
+                            <span v-if="triple.context.length>0">
+                                <span v-for="ctx in triple.context">
+                                    <span>&lt;{{ctx.p.label}}&gt;</span>
+                                    <span>&lt;{{ctx.o.nerName}}&gt;</span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div v-if="activeBlocks.length==0">
+                    <div class="block" style="height: 100em">
+                    {{emptyBlockState}}
+                    </div>
+                </div>
+
+
+            </div>
+
+
+          </div>
+          <div class="sidebar">
+
+            <div style="position: relative;">
+
+                <div>
+
+                    <div @click="saveDoc" title="click to save now" style="    text-align: right;font-size: 0.75em;font-family: monospace;color: green;">
+                        <span style="visibility: hidden;">{{lastSaveCounter}}</span>Last saved: <span>{{ parseInt((Math.round(new Date().getTime()/1000) - lastSaveStamp)/60) }} min ago</span></span>
+                    </div>
+                    <i @click="clearSearchBlockText()" class="fas fa-minus-circle" style="position: absolute; right: 10px;top: 27px;color: #dadada;cursor: pointer;" alt="Clear Search Text" title="Clear Search Text"></i>
+                    <input type="" name="" class="search-input" v-model="search" placeholder="Search Blocks">
+                </div>
+            </div>
+            <div class="tabs is-centered">
+              <ul>
+                <li :class="{'is-active':!showTriplesSidebar}" style="width: 49%;">
+                  <a @click="toggleSidebar">
+                    <span class="icon is-small"><i class="fas fa-cubes" aria-hidden="true"></i></span>
+                    <span>Entities</span>
+                  </a>
+                </li>
+                <li :class="{'is-active':showTriplesSidebar}" style="width: 49%;">
+                  <a @click="toggleSidebar">
+                    <span class="icon is-small"><i class="fas fa-link" aria-hidden="true"></i></span>
+                    <span>Triples</span>
+                  </a>
+                </li>
+
+              </ul>
+            </div>
+            <div v-if="showTriplesSidebar==true" id="sidebar-triples">
+
+
+                <div>Entitiy Palette</div>
+                
+                   <div @click="publishedEntityClick(element,null,null)" :title="element.id + '-' + element.desc" class="entity-container" v-for="element in tripleEntitiesPalette" :key="element">
+                    <span>{{element.nerName}}</span>
+                
+                   </div>
+            
+
+
+                <select id="triple-palette-select" @change="addToTriplePalette">
+                    <option value="none" selected>Select entitiy to add to palette</option>
+                    <option v-bind:value="p.eId" v-for="p in published">{{p.nerName}}</option>
+                </select>
+                
+
+                <hr style="margin=1em 0 0 1em;">
+
+
+                <div>Active Triple:</div>
+                
+                <div v-if="activeSubject !== null">
+
+                    <div>
+                        <span style="padding-right: 1em; font-weight: bold">&lt;{{activeSubject.nerName}}&gt;</span>
+                        <span v-if="activePredicate!=null" style="padding-right: 1em; font-weight: bold">&lt;{{activePredicate.label}}&gt;</span>
+                        <span v-if="activeObject!=null" style="padding-right: 1em; font-weight: bold">&lt;{{activeObject.nerName}}&gt;</span>
+
+                    </div>
+
+
+                    <buton style="margin-top:1em;" class="button is-small" @click="clearActiveTriple">clear</buton>
+                </div>
+
+                
+                <div v-if="activeContext !== null">
+                    <span>ADDING CONTEXT QUAD</span>
+                    <div>
+                        <span style="padding-right: 1em; font-weight: bold">...</span>
+                        <span v-if="activeContextProperty" style="padding-right: 1em; font-weight: bold">&lt;{{activeContextProperty}}&gt;</span>
+                        <span v-if="activeContextEntity" style="padding-right: 1em; font-weight: bold">&lt;{{activeContextEntity}}&gt;</span>
+
+                    </div>
+
+
+                    <buton style="margin-top:1em;" class="button is-small" @click="clearActiveContext">clear</buton>
+                </div>
+
+
+                <hr style="margin=1em 0 0 1em;">
+
+
+
+
+                <div>Property List:</div>
+                <div style="display: flex;">
+                    <div style="flex:1">
+                        <vuedraggable v-model="possiblePropertiesLeft" group="people" @start="drag=true" @end="drag=false">
+                           <div @click="setActivePredicate(element)" :title="element.id + '-' + element.desc" class="entity-container" v-for="element in possiblePropertiesLeft" :key="element">
+                            <span>{{element.label}}</span>
+
+                            <!-- <button slot="header" >Add</button> -->
+                           </div>
+                        </vuedraggable>                
+                    </div>
+
+                    <div style="flex:1">
+                        <vuedraggable  v-model="possiblePropertiesRight" group="people" @start="drag=true" @end="drag=false">
+                           <div @click="setActivePredicate(element)" :title="element.id + '-' + element.desc" class="entity-container" v-for="element in possiblePropertiesRight" :key="element">
+                            
+                            <span>{{element.label}}</span>
+                            <!-- <span @click="loadEntity(element, $event)" class="icon is-small"><i class="fas fa-cog" aria-hidden="true"></i></span> -->
+                            <!-- <button slot="header" >Add</button> -->
+                           </div>
+                        </vuedraggable>                
+                    </div>
+
+
+
+                </div>
+
+
+
+
+            </div>
+
+
+            <!-- ENTITY SIDE PANEL -->
+
+            <div v-else id="sidebar-entities">
+
+                <div>
+
+                    <div v-if="this.activePaintEntity" style="font-weight: bold; font-size: 1.2em">
+                        
+                        <span>You are painting entities to: {{doc.entities[this.activePaintEntity].nerName}}</span>
+
+                        <a target="_blank" :href="'https://base.semlab.io/entity/'+doc.entities[this.activePaintEntity].wiki.semlab">{{doc.entities[this.activePaintEntity].wiki.semlab}}</a>
+
+                        <hr>
+
+
+                    </div>
+                    <div v-else-if="publishedEntityInfo != null">
+
+                        <div style="font-weight: bold;">Published Entitiy</div>
+                        <div>{{publishedEntityInfo.entity.nerName}}</div>
+                        <a target="_blank" :href="'https://base.semlab.io/entity/'+publishedEntityInfo.entity.wiki.semlab">{{publishedEntityInfo.entity.wiki.semlab}}</a>
+
+                        
+
+                        <details style="margin-bottom: 1em;">
+                            <summary>{{publishedEntityInfo.occurrences.length}} Occurrences</summary>
+                            
+                            <ul>
+                                <li v-for="o in publishedEntityInfo.occurrences"><a @click="showBlockWord($event,o.b,o.w)" href="#">Block {{o.b}}, Word {{o.w}}</a></li>
+                            </ul>
+
+
+                        </details>
+
+                    </div>
+
+
+                    <div v-else-if="publishNewEntityInfo != null">
+
+                        <div style="font-weight: bold;">Publish NEW Entitiy</div>
+                        <div>{{publishNewEntityInfo.entity.nerName}}</div>
+
+                        <div>
+                        Instance Of:
+                        <select id="publishInstanceOf">
+                            <option v-bind:value="cls.id" v-for="cls in clist">{{cls.label}} {{cls.id}}</option>
+                        </select>
+                        </div>
+
+                        <div>
+
+                        Connect entitiy to these occurrences:
+                        <details style="margin-bottom: 1em;">
+                            <summary>{{publishNewEntityInfo.occurrences.length}} Occurrences</summary>
+                            
+                            <ul>
+                                <li v-for="o in publishNewEntityInfo.occurrences"> <input @change="togglePublishNewEntityEnabled(o)" type="checkbox" :checked="(o.enabled) ? 'checked' : '' ">&nbsp;<a @click="showBlockWord($event,o.b,o.w)" href="#">Block {{o.b}}, Word {{o.w}}</a></li>
+                            </ul>
+
+
+                        </details>
+
+                        </div>
+
+
+                        <button @click="publishEntityWikibase()">Create New Wikibase Entity</button>
+
+
+                        <div>{{publishNewEntityInfo.status}}</div>
+
+                        <hr>
+
+                    </div>
+
+
+                    
+
+
+
+
+                </div>
+
+
+
+
+
+                <div>
+
+                    <input type="text" placeholder="Filter List" v-model="publishedActiveFilterTextInput">
+                    <select @change="filterPublishedTypes">
+                        <option :slected="(publishedActiveFilterType==type.instanceOf)" v-bind:value="type.instanceOf" v-for="type in publishedTypes">{{type.instanceOfLabel}} {{type.instanceOf}}</option>
+                    </select>
+
+                    <div :style="{'background-color':(removePaint) ? 'rgba(255, 255, 0, 0.15)' : '', 'font-size':(removePaint) ? '2em' : '1.25em'}"  class="entity-container paint-possible">
+                        <span class="entity-container-label" @click="toggleRemovePaint()"><i class="fas fa-ban" style="padding-right: 0.25em"></i>Remove Paint</span>
+                   </div>
+
+                </div>
+
+                <div style="display: flex;">
+                    <div style="flex:1">
+                        <vuedraggable v-model="publishedLeft" group="people" @start="drag=true" @end="drag=false">
+                           <div :style="{'background-color':(element.eId == activePaintEntity) ? activePaintEntityColor : '', 'font-size':(element.eId == activePaintEntity) ? '2em' : '1.25em'}"  class="entity-container paint-possible" v-for="element in publishedLeft" :key="element">
+                            <span class="entity-container-label" @click="startPaint(element)">{{element.nerName}}</span>
+                            <span @click="loadEntity(element)" class="icon is-small"><i class="fas fa-cog" aria-hidden="true"></i></span>
+
+                            <!-- <button slot="header" >Add</button> -->
+                           </div>
+                        </vuedraggable>                
+                    </div>
+
+                    <div style="flex:1">
+                        <vuedraggable  v-model="publishedRight" group="people" @start="drag=true" @end="drag=false">
+                           <div  :style="{'background-color':(element.eId == activePaintEntity) ? activePaintEntityColor : '', 'font-size':(element.eId == activePaintEntity) ? '2em' : '1.25em'}"  class="entity-container paint-possible" v-for="element in publishedRight" :key="element">
+                            <span class="entity-container-label" @click="startPaint(element)">{{element.nerName}}</span>
+                            <span @click="loadEntity(element)" class="icon is-small"><i class="fas fa-cog" aria-hidden="true"></i></span>
+                            <!-- <button slot="header" >Add</button> -->
+                           </div>
+                        </vuedraggable>                
+                    </div>
+
+
+
+                </div>
+            </div>
+
+
+          </div>
+
+        </div>
+
+
+
+
+
+
+	</div>
+
+
+
+<script >
+
+
+
+	var app = new Vue({
+	  el: '#app',
+	  data: {
+	    message: 'Loading Entities!',
+	    doc: {},
+        activeBlocks: [],
+        instaceOfColorLookup: {},
+        publishedLeft: [],
+        publishedRight: [],
+        publishedTypes: [],
+        publishedActiveFilterType: '',
+        publishedActiveFilterText: '',
+        showTriplesSidebar: false,
+        plist: [],
+        clist: [],
+        possibleProperties: [],
+        possiblePropertiesRight: [],
+        possiblePropertiesLeft: [],     
+        tripleEntitiesPalette: [],
+
+
+        needsSaving: false,
+        lastSaveStamp: Math.round(new Date().getTime()/1000),
+        lastSaveCounter: 0,
+
+        removePaint: false,
+
+        emptyBlockState: 'Loading data...',
+
+        blockSearchVal: '',
+
+
+        publishedEntityInfo: null,
+        publishNewEntityInfo: null,
+
+        activeSubject: null,
+        activePredicate: null,
+        activeObject: null,
+
+        blockTriples: {},
+
+
+        activePaintEntity: null,
+        activePaintEntityColor: null,
+
+        activeContext: null,
+        activeContextProperty: null,
+        activeContextEntity: null
+
+
+	  },
+      components: {
+        vuedraggable
+
+      },
+        computed: {
+         publishedActiveFilterTextInput: {
+            get() {
+              return this.publishedActiveFilterText
+            },
+            set(val) {
+              if (this.timeout) clearTimeout(this.timeout)
+              this.timeout = setTimeout(() => {
+                if (val == ''){
+                    this.publishedActiveFilterText = null
+                }else{
+                    this.publishedActiveFilterText = val    
+                }
+                    this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
+                
+
+              }, 500)
+            }
+          },
+            search: {
+            get() {
+              return this.blockSearchVal
+            },
+            set(val) {
+              if (this.timeout) clearTimeout(this.timeout)
+              this.timeout = setTimeout(() => {
+                this.blockSearchVal = val
+                this.filterBlocks(this.blockSearchVal)
+              }, 500)
+            }
+            }
+
+
+
+        },
+
+
+	  created: function(){
+
+	  	let self = this
+
+		fetch(`/document/${docId}/work/data`)
+		  .then(response => response.json())
+		  .then(data => {
+		  	
+		  	self.doc = data
+		  	console.log(self.doc)
+
+            console.log(self.doc.entities)
+            self.blockTriples = self.doc.triples
+
+            // find all current possible instance ofs
+            self.buildInstaceOfColorLookup()
+
+            self.buildPublished()
+
+            self.filterBlocks()
+
+            self.refreshPlist()
+
+            self.refreshClist()
+
+
+
+            document.body.addEventListener('keydown',(event)=>{
+                if (event.keyCode === 27) {
+                    window.app.stopPaint()
+                    return;
+                }
+
+
+            })
+
+
+		  });	
+
+
+
+          // setup the save timer to go off every 5min
+          window.setInterval(()=>{
+
+            if (this.needsSaving){
+                this.saveDoc()
+            }
+
+
+          }, (1000 * 60) * 5 )
+
+
+          window.setInterval(()=>{
+
+            this.lastSaveCounter++
+
+
+          }, 1000)
+
+	  },
+
+
+
+
+  methods: {
+
+        filterBlocks: function(filterValue){
+
+            this.activeBlocks = []
+
+            let blockCopy = JSON.parse(JSON.stringify( this.doc.blocks))
+
+            for (let b of blockCopy){
+
+                if (filterValue){
+
+                    filterValue = filterValue.toLowerCase()
+
+                    if (b.text){
+
+                         
+                         let text = b.text.toLowerCase().replace(/\n/g,' ').replace(/\s{2}/g,' ')
+
+                        if (text.includes(filterValue)){
+
+                            for (let w of b.words){
+
+                                for (let fs of filterValue.split(' ')){
+                                    if (w.text.toLowerCase().includes(fs)){
+                                        w.searchHit = true
+                                        console.log(w)
+                                    }
+                                }
+
+                            }
+
+
+                            this.activeBlocks.push(b)
+                        }
+
+                    }
+                   
+
+                }else{
+
+                    this.activeBlocks.push(b)
+                }
+
+
+            }
+
+
+            if (this.activeBlocks.length==0){
+                this.emptyBlockState='No matches found in blocks.'
+            }
+
+        },
+
+        buildInstaceOfColorLookup: function(){
+
+            function hexToRgb(hex) {
+              var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+              } : null;
+            }
+
+
+
+            let types = ['None']
+
+
+            for (let e of Object.keys(this.doc.entities)){
+                e = this.doc.entities[e]
+
+                if (e.wiki && e.wiki.semlabInstanceOf){
+                    let t = `${e.wiki.semlabInstanceOf.instanceOfLabel} (${e.wiki.semlabInstanceOf.instanceOf})`
+                    if (types.indexOf(t)==-1){
+                        types.push(t)
+                    }
+                }
+            }
+
+
+            var seq = palette('mpn65', types.length);
+
+            console.log(types)
+            console.log(seq)
+
+            types.forEach( (value, i) => {
+                let rgb = hexToRgb(seq[i])
+                this.instaceOfColorLookup[value] = `rgba(${rgb.r},${rgb.g},${rgb.b},0.25)`
+            });
+
+
+
+
+        },
+
+        returnInstanceOfColor: function(e){
+
+            
+            let t = 'None'
+            if (e.wiki && e.wiki.semlabInstanceOf){
+                t = `${e.wiki.semlabInstanceOf.instanceOfLabel} (${e.wiki.semlabInstanceOf.instanceOf})`
+            }
+
+            return this.instaceOfColorLookup[t]
+
+
+
+        },
+
+        clearSearchBlockText: function(){
+
+            this.blockSearchVal = ''
+            this.filterBlocks('')            
+        },
+
+
+        refreshPlist: function(){
+
+
+            let self = this
+
+            fetch(`/plist`)
+              .then(response => response.json())
+              .then(data => {                
+                self.plist = data
+                
+
+                self.possibleProperties = data.filter((f)=>{return f.type == "WikibaseItem"})
+                
+                self.possiblePropertiesLeft=[]
+                self.possiblePropertiesRight=[]
+                for (let p of self.possibleProperties){
+
+                    if (self.possiblePropertiesLeft.length>self.possiblePropertiesRight.length){
+                        self.possiblePropertiesRight.push(p)
+
+                    }else{
+                        self.possiblePropertiesLeft.push(p)
+                    }
+
+
+                }
+                console.log(self.possiblePropertiesLeft)
+
+
+
+              });   
+
+
+
+        },
+        refreshClist: function(){
+
+
+            let self = this
+
+            fetch(`/clist`)
+              .then(response => response.json())
+              .then(data => {                
+                self.clist = data
+                
+              });   
+
+
+
+        },
+
+        filterPublishedTypes: function(event){
+
+
+            this.publishedActiveFilterType = event.target.value
+
+
+
+            this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
+
+
+        },
+
+        buildPublished: function(filter, type){
+
+            console.log(filter, type)
+
+            this.published = []
+            let instanceOfAdded = {}
+
+            this.publishedTypes = []
+
+            this.publishedTypes.push({instanceOfLabel:'All', instanceOf:''})
+
+            for (let e of Object.keys(this.doc.entities)){
+                e = this.doc.entities[e]
+
+                if (e.published){
+
+                    if (e.wiki && e.wiki.semlabInstanceOf){
+                        if (!instanceOfAdded[e.wiki.semlabInstanceOf.instanceOf]){
+                            instanceOfAdded[e.wiki.semlabInstanceOf.instanceOf] = true
+                            this.publishedTypes.push(e.wiki.semlabInstanceOf)
+                        }
+                    }
+
+
+
+                    if (filter && type){
+                        if (e.wiki && e.wiki.semlabInstanceOf){
+                            if (e.wiki.semlabInstanceOf.instanceOf == this.publishedActiveFilterType){
+                                if (e.nerName.toLowerCase().includes(filter.toLowerCase())){
+                                    this.published.push(e)
+                                }                                
+
+                            }
+                        }
+
+
+                    }else if (filter){
+
+                        if (e.nerName.toLowerCase().includes(filter.toLowerCase())){
+                            this.published.push(e)
+                        }
+
+                    }else if (type){
+                        if (e.wiki && e.wiki.semlabInstanceOf){
+                            if (e.wiki.semlabInstanceOf.instanceOf == this.publishedActiveFilterType){
+                                this.published.push(e)
+                            }
+                        }
+                    }else{
+                        this.published.push(e)
+                    }
+                }
+
+                
+            }
+
+
+            this.published.sort((a, b) => a.nerName.localeCompare(b.nerName));
+
+
+            this.publishedLeft=[]
+            this.publishedRight=[]
+            for (let p of this.published){
+
+                if (this.publishedLeft.length>this.publishedRight.length){
+                    this.publishedRight.push(p)
+
+                }else{
+                    this.publishedLeft.push(p)
+                }
+
+
+            }
+
+
+
+
+
+
+
+        },
+
+        publishEntity: function(block,word){
+            console.log('publishEntity',this.activePaintEntity)
+
+            if (this.activePaintEntity != null){
+
+                this.doc.blocks[block.id].words[word.order].eId = this.activePaintEntity
+                this.doc.blocks[block.id].words[word.order].ner = true
+                this.doc.blocks[block.id].words[word.order].nerName = this.doc.entities[this.activePaintEntity].nerName
+                this.doc.blocks[block.id].words[word.order].contextualText = word.text
+
+                this.needsSaving=true
+
+                word.eId = this.activePaintEntity
+                word.ner = true
+                word.nerName = this.doc.entities[this.activePaintEntity].nerName
+                word.contextualText = word.text
+
+                console.log(this.doc.entities[this.activePaintEntity])
+
+            }else{
+
+                // it might not be an entitiy
+                if (!word.eId){
+                    return false
+                }
+                let data = this.gatherEntitiyToBlockInfo(word.eId)
+
+                for (let d of data){
+                    d.enabled =true
+                }
+
+                this.publishedEntityInfo = null
+
+                this.publishNewEntityInfo = {
+
+                       entity: this.doc.entities[word.eId],
+                    occurrences: data
+
+
+                }
+
+
+                console.log('else')
+                console.log(data)
+
+
+            }
+            console.log(block,word)
+
+        },
+
+
+
+
+        toggleSidebar: function(event){
+
+
+            if (this.showTriplesSidebar){
+                this.showTriplesSidebar = false
+            }else{
+                this.showTriplesSidebar = true
+                this.buildPublished()
+
+
+            }
+
+            event.preventDefault()
+
+
+        },
+
+
+
+        loadEntity: function(ent){
+
+            this.publishNewEntityInfo = null
+            this.publishedEntityInfo = {
+
+                entity: ent,
+                occurrences: this.gatherEntitiyToBlockInfo(ent)
+
+
+            }
+
+
+            return false
+
+
+
+
+        },
+
+        setActivePredicate: function(property){
+
+
+            if (this.activeContext != null){
+                this.activeContext.property = property
+                this.activeContextProperty = property.label
+
+                this.clearEmojiCursor()
+                document.body.classList.add('cursor-active-object')
+
+                console.log(this.activeContext)
+            }else{
+
+                // weneedto have a subject first
+                if (this.activeSubject!=null){
+                    this.activePredicate = property 
+                    this.clearEmojiCursor()   
+                    document.body.classList.add('cursor-active-object')
+                }
+
+            }
+
+            
+        },
+
+        addToTriplePalette: function(event){
+
+
+            console.log()
+            
+            if (event.target.value == 'none'){
+                return false
+            }
+
+            for (let e of Object.keys(this.doc.entities)){
+                e = this.doc.entities[e]
+                if (e.eId == event.target.value){
+                    this.tripleEntitiesPalette.push(e)
+                }
+            }            
+
+            document.getElementById('triple-palette-select').value = 'none'
+
+
+        },
+
+
+        publishedEntityClick: function(entity, block, word){
+            
+
+
+            if (this.showTriplesSidebar){
+
+                if (this.activeContext != null && this.activeContextProperty != null){
+                    this.activeContext.entity = entity
+                    // console.log(this.activeContext)
+                    this.activeContextEntity = entity.nerName
+                    // they jsut added context to a triple, 
+                    this.blockTriples[this.activeContext.blockId][this.activeContext.index].context.push({p:this.activeContext.property,o:this.activeContext.entity})
+                    // console.log(this.blockTriples[this.activeContext.blockId])
+                    this.activeContext = null
+
+                    this.needsSaving = true
+
+                    console.log(this.blockTriples)
+                    this.clearEmojiCursor()
+
+                    return 
+                }
+
+                if (this.activeContext != null){
+                    // if it gets here they are in active context mode, don't try to make a new triple
+                    return
+                }
+
+
+                if (this.activeSubject==null){
+                    this.activeSubject = entity
+
+                    document.body.classList.add('cursor-active-predicate')
+
+
+                }  
+                // can't make the object via entity palette
+                if (this.activeSubject !== null && this.activePredicate !== null && block != null){
+                    this.activeObject = entity
+                    if (!this.blockTriples[block.id]){
+                        this.blockTriples[block.id] = []
+                    }
+                    this.blockTriples[block.id].push({s:this.activeSubject,p:this.activePredicate,o:this.activeObject,context:[]})
+                    this.clearActiveTriple()
+                }
+
+                console.log(this.blockTriples)
+
+
+            }else{
+
+
+                if (entity && block && word){
+
+
+                    if (this.removePaint){
+                        // remove the tag
+
+                        console.log(entity, block, word)
+                        console.log(this.doc.blocks[block.id].words[word.order])
+                        this.doc.blocks[block.id].words[word.order].eId = null
+
+                        word.eId = null 
+
+                        this.needsSaving=true
+
+
+                        // kind of hack here to get the UI to update                     
+                        block.words.push({ner: false,
+                        order: 10000,
+                        orginalText: "",
+                        text: ""})
+                        block.words.pop()
+
+                        return false
+
+                    }
+
+
+
+
+
+                    this.stopPaint()
+                    console.log(entity, block, word)
+
+                    this.publishNewEntityInfo = null
+                    this.publishedEntityInfo = {
+
+                        entity: entity,
+                        occurrences: this.gatherEntitiyToBlockInfo(entity)
+
+
+                    }
+
+                }
+
+
+
+
+            }
+
+
+
+        },
+
+        gatherEntitiyToBlockInfo: function(entity){
+
+
+
+            if (Number.isInteger(entity)){
+                entity = {eId: entity}
+            }
+            console.log(entity,'<entity')
+
+            let blocks = []
+
+            
+            for (let b of this.doc.blocks){
+
+                for (let w of b.words){
+
+                    if(w.eId && w.eId == entity.eId){
+
+
+                        blocks.push({
+                            b: b.id,
+                            w: w.order
+                        })
+
+                    }
+
+                }
+
+            }
+            console.log(blocks)
+            return blocks
+
+
+        },
+
+
+        showBlockWord: function(event, block,word){
+
+            console.log(document.getElementById(`b${block}-${word}`))
+
+
+            document.getElementById(`b${block}-${word}`).scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+
+            document.getElementById(`b${block}-${word}`).style.transitionProperty = 'font-weight'
+            document.getElementById(`b${block}-${word}`).style.transitionDuration = '3s'
+            document.getElementById(`b${block}-${word}`).style.fontWeight = '900'
+            document.getElementById(`b${block}-${word}`).style.transitionTimingFunction = 'ease-in-out'
+
+
+
+
+
+
+            window.setTimeout(()=>{
+
+                document.getElementById(`b${block}-${word}`).style.removeProperty('font-weight')
+ 
+
+            },3000)
+
+            window.setTimeout(()=>{
+
+               document.getElementById(`b${block}-${word}`).style.removeProperty('transition-property')
+               document.getElementById(`b${block}-${word}`).style.removeProperty('transition-duration')
+               document.getElementById(`b${block}-${word}`).style.removeProperty('transition-timing-function')
+
+                
+
+
+            },6000)
+
+
+
+
+            event.preventDefault()
+            return false
+
+
+        },
+
+
+        saveDoc: function(){
+
+
+
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", `/document/${docId}/save`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = () => {
+                // do something to response
+                this.needsSaving = false
+                this.lastSaveStamp = Math.round(new Date().getTime()/1000)
+            }
+
+            
+            xhr.send(JSON.stringify({
+                id: docId,
+                blocks: this.doc.blocks,
+                triples: this.blockTriples,
+                entities: this.doc.entities
+            }));            
+
+
+
+
+        },
+
+
+        publishEntityWikibase: function(){
+
+
+            this.publishNewEntityInfo.status = 'Working...'
+
+            let instanceOf = document.getElementById('publishInstanceOf').value
+
+            // ask to create it
+
+            console.log(instanceOf)
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", `/publish`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            let self = this
+
+
+
+            xhr.onload = function() {
+                
+
+
+                let d = JSON.parse(this.responseText)
+
+                if (d.qid){
+
+                    // flip the flag in the entitiy lookup in the doc                 
+                    self.doc.entities[self.publishNewEntityInfo.entity.eId].published = true
+                    let instanceOf = self.clist.filter(c => c.id == d.instanceOf)
+
+                    if (!self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki){
+                        self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki = {}
+                    }
+
+                    console.log("instanceOf",instanceOf)
+                    self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki.semlab = d.qid
+                    self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki.semlabInstanceOf= {
+                      "instanceOf": instanceOf[0].id,
+                      "instanceOfLabel": instanceOf[0].label                  
+                    }
+
+                    self.buildInstaceOfColorLookup()
+
+                    self.buildPublished()
+
+                    self.refreshPlist()
+
+                    self.refreshClist()
+
+                    // loop throguh all the things that they did not want assigned to this publshed entitiy and remove the eId
+                    let remove = self.publishNewEntityInfo.occurrences.filter(o => o.enabled==false)
+
+                    for (let r of remove){
+                        for (let b of self.doc.blocks){
+                            if (b.id == r.b){
+                                for (let w of b.words){
+                                    if (w.order == r.w){                                        
+                                        w.eId = null
+                                    }
+                                }
+                            }
+                        }
+
+
+                    }
+
+                    
+                    // change the display
+                    self.publishedEntityInfo = {
+
+                        entity: self.publishNewEntityInfo.entity,
+                        occurrences: self.gatherEntitiyToBlockInfo(self.publishNewEntityInfo.entity)
+
+
+                    }        
+                    self.publishNewEntityInfo=null            
+
+
+
+                }else{
+
+                    
+                    self.publishNewEntityInfo.status = 'Error: ' + JSON.stringify(d.msg)
+
+
+                }
+
+
+                
+
+
+
+            }
+
+            
+            xhr.send(JSON.stringify({
+                label:  this.publishNewEntityInfo.entity.nerName,
+                instanceOf: instanceOf
+            }));     
+
+
+
+
+
+
+
+        },
+
+
+
+        togglePublishNewEntityEnabled: function(occurrence){
+
+            for (let o of this.publishNewEntityInfo.occurrences){
+
+
+                if (o.w == occurrence.w && o.b == occurrence.b){
+                    o.enabled = false
+
+                }
+
+            }
+
+            console.log(this.publishNewEntityInfo.occurrences)
+
+
+        },
+
+
+        clearEmojiCursor:function(){
+            document.body.classList.remove('cursor-paint')
+            document.body.classList.remove('cursor-remove-paint')
+            document.body.classList.remove('cursor-active-predicate')
+            document.body.classList.remove('cursor-active-object')
+
+
+        },
+
+        removeBlockTriple: function(blockId, index, event){
+
+            this.blockTriples[blockId].splice(index, 1)
+            event.target.parentElement.style.display='none'
+            this.needsSaving=true
+        },
+
+        addContext: function(blockId, index){
+
+            this.activeContext = {blockId:blockId,index:index}
+            document.body.classList.add('cursor-active-predicate')
+            console.log(this.activeContext)
+        },
+
+        clearActiveTriple:function(){
+            this.activeSubject=null
+            this.activePredicate=null
+            this.activeObject=null
+            this.clearEmojiCursor()
+        },
+
+
+        clearActiveContext:function(){
+
+
+            this.activeContext = null
+            this.activeContextEntity = null
+            this.activeContextProperty = null
+            this.clearEmojiCursor()
+        },
+
+
+        startPaint: function(entity){
+
+            document.body.classList.add('cursor-paint')
+            
+            this.publishedEntityInfo = null
+            this.removePaint = false
+
+            if (this.activePaintEntity && this.activePaintEntity == entity.eId){
+                this.stopPaint()
+                return 
+            }
+
+            this.activePaintEntity = entity.eId
+            this.activePaintEntityColor = this.returnInstanceOfColor(entity)
+
+
+        },
+
+        stopPaint: function(){
+
+            this.clearEmojiCursor()
+            this.publishedEntityInfo = null
+            this.removePaint = false
+            this.activePaintEntity = null
+            this.activePaintEntityColor = null
+
+        },
+
+        toggleRemovePaint: function(){
+            this.clearEmojiCursor()
+
+            this.publishedEntityInfo = null
+            this.activePaintEntity = null
+
+            if (this.removePaint){
+                this.removePaint = false
+
+                
+                this.clearEmojiCursor()
+
+
+            }else{
+                this.removePaint = true
+                document.body.classList.add('cursor-remove-paint')
+            }
+
+
+        }
+
+
+	  }
+	})
+
+
+</script>
+
+</body>
+
+
+
+
+</html>
