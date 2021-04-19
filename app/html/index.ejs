@@ -123,13 +123,105 @@
 
 
       </div>
+
+
+
     </div>
 
 
     <% } %>    
 
   
+      <div style="width: 50%; padding:2em;">
+          
+        <div>
+          <table id="myTable" style="width: 100%;">
 
+
+          </table>
+
+
+
+
+
+        </div>
+
+
+
+
+        <script>
+
+        function timeConverter(UNIX_timestamp){
+          var a = new Date(UNIX_timestamp * 1000);
+          var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          var year = a.getFullYear();
+          var month = months[a.getMonth()];
+          var date = a.getDate();
+          var hour = a.getHours();
+          var min = a.getMinutes();
+          var sec = a.getSeconds();
+          var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+          return time;
+        }
+
+        fetch('/docstatus')
+          .then(response => response.json())
+          .then((data) => {
+
+
+
+            if (data.msg){
+
+              document.getElementById('myTable').innerHTML = data.msg
+
+
+            }else{
+
+              var arrObj = data
+                var objLength = arrObj.length;
+              var myvar = '<table>'+
+              '<tr>'+
+              '<th>Filename</th>'+
+              '<th>Stage</th>'+
+              '<th>User</th>'+
+              '<th>Started</th>'+
+
+
+              '</tr>';
+
+               for(var i = 0; i < objLength; i++){
+              myvar += '<tr>'+
+              '<td>'+arrObj[i].orginalFileName+'</td>'+
+              '<td>'+ `<a href="/document/${arrObj[i].id}/${arrObj[i].currentStage}">${arrObj[i].currentStage}</a>` +'</tD>'+
+              '<td>'+arrObj[i].user+'</th>'+
+              '<td>'+ timeConverter((arrObj[i].timestampStart/1000)) +'</th>'+
+
+              '</tr>'     
+               }
+
+               myvar += '</table>';
+
+              console.log(myvar);
+               document.getElementById('myTable').innerHTML = myvar;
+
+
+
+
+
+            }
+
+
+
+          });
+
+
+
+
+
+        </script>
+
+
+      </div>
 
 
 </body>
