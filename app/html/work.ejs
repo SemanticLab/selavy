@@ -571,7 +571,7 @@
                     this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
                 
 
-              }, 500)
+              }, 750)
             }
           },
             search: {
@@ -583,7 +583,7 @@
               this.timeout = setTimeout(() => {
                 this.blockSearchVal = val
                 this.filterBlocks(this.blockSearchVal)
-              }, 500)
+              }, 750)
             }
             }
 
@@ -605,18 +605,16 @@
 
             console.log(self.doc.entities)
             self.blockTriples = self.doc.triples
+            if (!self.blockTriples){
+                self.blockTriples = {}
+            }
 
             // find all current possible instance ofs
             self.buildInstaceOfColorLookup()
-
             self.buildPublished()
-
             self.filterBlocks()
-
             self.refreshPlist()
-
             self.refreshClist()
-
 
 
             document.body.addEventListener('keydown',(event)=>{
