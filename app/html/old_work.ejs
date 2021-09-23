@@ -169,7 +169,6 @@
 
     <script>
     	var docId = "<%- docId %>";
-
     </script>
 
 
@@ -209,7 +208,6 @@
 
                     </template>
 
-
                     <div class="triple-block-display" :style="{'display': (blockTriples[block.id] && blockTriples[block.id].length >0 ) ? 'block' : 'none'}">
                         <div v-for="(triple,index) in blockTriples[block.id]">
                             <button @click="removeBlockTriple(block.id,index,$event)" class="button is-small">x</button>
@@ -239,8 +237,6 @@
 
 
           </div>
-
-
           <div class="sidebar">
 
             <div style="position: relative;">
@@ -484,28 +480,6 @@
 
 
                 </div>
-
-                <div>
-                    
-                    <hr>
-                    <details>
-                        
-
-                        <summary style="cursor: pointer;">Load entities from Wikibase:</summary>
-                        
-                        <div>
-
-                        <textarea v-model="loadEntitiesInput"  style="width:97%; min-height: 150px; padding: 5px;" placeholder="Add Q IDs here one per line">
-                            
-
-                        </textarea>
-                        </div>
-                        <div>
-                                <button @click="loadEntitiesFromWikibase()" class="button is-small" ref="loadEntitiesFromWikibaseButton">Load</button>
-                        </div>
-                    </details>
-
-                </div>
             </div>
 
 
@@ -573,10 +547,7 @@
 
         activeContext: null,
         activeContextProperty: null,
-        activeContextEntity: null,
-
-
-        loadEntitiesInput:"",
+        activeContextEntity: null
 
 
 	  },
@@ -587,34 +558,20 @@
         computed: {
          publishedActiveFilterTextInput: {
             get() {
-            console.log('heeeeyy')
               return this.publishedActiveFilterText
             },
             set(val) {
-
-
-
+              if (this.timeout) clearTimeout(this.timeout)
+              this.timeout = setTimeout(() => {
                 if (val == ''){
                     this.publishedActiveFilterText = null
                 }else{
                     this.publishedActiveFilterText = val    
                 }
-
+                    this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
                 
 
-              if (this.timeout) clearTimeout(this.timeout)
-
-              this.timeout = setTimeout(() => {
-
-
-
-
-
-                this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
-            
-                
-                 
-              }, 500)
+              }, 750)
             }
           },
             search: {
@@ -626,7 +583,7 @@
               this.timeout = setTimeout(() => {
                 this.blockSearchVal = val
                 this.filterBlocks(this.blockSearchVal)
-              }, 500)
+              }, 750)
             }
             }
 
@@ -654,14 +611,10 @@
 
             // find all current possible instance ofs
             self.buildInstaceOfColorLookup()
-
             self.buildPublished()
             self.filterBlocks()
-
             self.refreshPlist()
-
             self.refreshClist()
-
 
 
             document.body.addEventListener('keydown',(event)=>{
@@ -672,9 +625,6 @@
 
 
             })
-
-
-
 
 
 		  });	
@@ -751,6 +701,7 @@
 
             }
 
+
             if (this.activeBlocks.length==0){
                 this.emptyBlockState='No matches found in blocks.'
             }
@@ -799,152 +750,6 @@
 
 
         },
-
-
-        loadEntitiesFromWikibase: async function(){
-
-
-            toadd = []
-            for (let qid of this.loadEntitiesInput.split('\n')){
-                if (qid.match(/Q[0-9]+/)){
-                    toadd.push(qid)
-                }
-            }
-
-            const classResponse = await fetch('/clist/');
-            const allClasses = await classResponse.json();
-
-            this.$refs.loadEntitiesFromWikibaseButton.innerHTML = 'Working...'
-            this.$refs.loadEntitiesFromWikibaseButton.disabled = true
-
-
-            console.log(toadd)
-            console.log(allClasses)
-            let added = []
-
-            for (let qid of toadd){
-                console.log('doing ',qid)
-
-                const response = await fetch('/entity/'+qid);
-                const data = await response.json();
-
-                if (data){
-
-                    // pull out qid and label
-                    let qid = data.id
-                    let label = data.id
-                    if (data.labels && data.labels.en && data.labels.en.value){
-                        label = data.labels.en.value
-                    }
-                    
-
-                    // check to make sure it doesn';t exist
-
-                    let alreadyQs = []
-                    let eCounter = -1
-                    let pCounter = -1
-                    for (let k in this.doc.entities){
-                        if (this.doc.entities[k] && this.doc.entities[k].wiki && this.doc.entities[k].wiki.semlab){
-                            alreadyQs.push(this.doc.entities[k].wiki.semlab)
-                        }
-                        if (this.doc.entities[k] && this.doc.entities[k].eId){
-                            if (this.doc.entities[k].eId > eCounter ){
-                                eCounter= this.doc.entities[k].eId
-                            }
-                        }
-                        if (this.doc.entities[k] && this.doc.entities[k].pId){
-                            if (this.doc.entities[k].pId > pCounter ){
-                                pCounter= this.doc.entities[k].pId
-                            }
-                        }
-
-
-                    }
-
-                    // // get eNumber add one to use 
-                    eCounter++
-                    pCounter++
-
-                    if (alreadyQs.indexOf(qid)>-1){
-                        alert(`${label} (${qid}) is already in the pallet`)
-                        continue
-                    }
-
-                    console.log(data)
-                    let classQid = null
-                    if (data.claims && data.claims.P1 && data.claims.P1[0] && data.claims.P1[0].mainsnak && data.claims.P1[0].mainsnak.datavalue && data.claims.P1[0].mainsnak.datavalue.value && data.claims.P1[0].mainsnak.datavalue.value.id ){
-                        classQid = data.claims.P1[0].mainsnak.datavalue.value.id
-                    }
-
-                    let classLabel = null
-                    for (let aClass of allClasses){
-                        if (aClass.id == classQid ){
-                            classLabel = aClass.label
-                        }
-                    }
-
-
-                    console.log('alreadyQs',alreadyQs,eCounter,pCounter)
-
-                    let newEnt = {
-                        "order": 61,
-                        "ner": false,
-                        "eId": eCounter,
-                        "nerName": label,
-                        "eType": "",
-                        "mType": "",
-                        "text": label,
-                        "wiki": {
-                          "wikidata": null,
-                          "desc": null,
-                          "image": null,
-                          "semlab": qid,
-                          "semlabInstanceOf": {
-                            "instanceOf": classQid,
-                            "instanceOfLabel": classLabel
-                          }
-                        },
-                        "mid": null,
-                        "replacedText": label,
-                        "contextualText": label,
-                        "blockOccuranceCount": 0,
-                        "blockOccurances": {
-                        },
-                        "blocksFoundIn": [],
-                        "totalFoundCount": 0,
-                        "semlabBaseSearch": [],
-                        "isDiscarded": false,
-                        "pId": pCounter,
-                        "published": true
-                      }
-
-                      console.log(newEnt)
-
-                    // rebuild published
-                    this.doc.entities[eCounter] = newEnt
-                    this.buildPublished()
-
-                    added.push(`${label} (${qid}) added`)
-
-                }else{
-                    alert('Could not find Qid', qid)
-                }
-                
-
-            }
-
-
-            this.$refs.loadEntitiesFromWikibaseButton.innerHTML = 'Load'
-            this.$refs.loadEntitiesFromWikibaseButton.disabled = false
-            this.loadEntitiesInput = ""
-            
-            alert(added.join(',') + ' Added to the pallet.')
-
-
-
-        },
-
-
 
         returnInstanceOfColor: function(e){
 
@@ -1088,7 +893,7 @@
 
 
             this.published.sort((a, b) => a.nerName.localeCompare(b.nerName));
-            console.log(this.published)
+
 
             this.publishedLeft=[]
             this.publishedRight=[]
@@ -1103,6 +908,10 @@
 
 
             }
+
+
+
+
 
 
 

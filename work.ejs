@@ -169,7 +169,6 @@
 
     <script>
     	var docId = "<%- docId %>";
-
     </script>
 
 
@@ -587,33 +586,19 @@
         computed: {
          publishedActiveFilterTextInput: {
             get() {
-            console.log('heeeeyy')
               return this.publishedActiveFilterText
             },
             set(val) {
-
-
-
+              if (this.timeout) clearTimeout(this.timeout)
+              this.timeout = setTimeout(() => {
                 if (val == ''){
                     this.publishedActiveFilterText = null
                 }else{
                     this.publishedActiveFilterText = val    
                 }
-
+                    this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
                 
 
-              if (this.timeout) clearTimeout(this.timeout)
-
-              this.timeout = setTimeout(() => {
-
-
-
-
-
-                this.buildPublished(this.publishedActiveFilterText,this.publishedActiveFilterType)
-            
-                
-                 
               }, 500)
             }
           },

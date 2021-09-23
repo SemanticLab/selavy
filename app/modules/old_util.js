@@ -24,7 +24,8 @@ function replaceBetween(origin, startIndex, endIndex, insertion) {
 exports.returnBlockFilters = function(){
 	var blockFilters = []
 	fs.readdirSync(`${__dirname}/../html/js/plugins/blocks/`).forEach(file => {
-		console.log(file)
+		
+		
 	  if (file.search(".js")>-1){
 	  	blockFilters.push(file)
 	  }
@@ -90,21 +91,21 @@ exports.enrichNERBlocks = function(blocks){
 						for (let r of existingRanges){
 
 							if (m.text.beginOffset >= r[0] && m.text.beginOffset+useMId.length <= r[1] && m.text.content != r[2]){
-								console.log("Looks like ", m.text.content, `(${m.text.beginOffset},${m.text.beginOffset+useMId.length})` ,'oever laps with', r[2], `(${r[0]},${r[1]})`)
-								console.log(m)
+								// console.log("Looks like ", m.text.content, `(${m.text.beginOffset},${m.text.beginOffset+useMId.length})` ,'oever laps with', r[2], `(${r[0]},${r[1]})`)
+								// console.log(m)
 
-								console.log(r[3])
-								console.log('------')
+								// console.log(r[3])
+								// console.log('------')
 								continue
-								console.log('shouldnetberehere')
+								// console.log('shouldnetberehere')
 							}
 
 						}
 
 						if (replacedText.substring(m.text.beginOffset, m.text.beginOffset+useMId.length).includes('~')){
-							console.log('~~~~~~~~~~')
-							console.log(m)
-							console.log(replacedText.substring(m.text.beginOffset-10, m.text.beginOffset+useMId.length+10))
+							// console.log('~~~~~~~~~~')
+							// console.log(m)
+							// console.log(replacedText.substring(m.text.beginOffset-10, m.text.beginOffset+useMId.length+10))
 							continue
 						}
 
@@ -171,7 +172,7 @@ exports.enrichNERBlocks = function(blocks){
 
 			let justId = word.replace(/[^~¬0-9]*/g,'')
 
-			console.log(word,justId)
+			// console.log(word,justId)
 
 			if (b.mIds[justId]){
 
@@ -210,20 +211,20 @@ exports.enrichNERBlocks = function(blocks){
 		}
 
 		// console.log(wordList)
-		console.log(words)
+		// console.log(words)
 		b.words = words
 
 		for (let w of b.words){
-			console.log(w)
+			// console.log(w)
 			if (!w.ner && (w.text.includes('~') || w.text.includes('¬')) ){
 				w.text = w.orginalText
 				w.hasTextError = true
 			}
 		}
 
-		console.log(replacedText)
-		console.log("-----")
-		console.log(orginalText)
+		// console.log(replacedText)
+		// console.log("-----")
+		// console.log(orginalText)
 
 
 		delete b.entities
@@ -294,39 +295,6 @@ exports.gatherBaseData = async function(qid){
 
 }
 
-
-
-exports.returnEntity = async function(qid){
-
-	let url = 'https://base.semlab.io/wiki/Special:EntityData/'+ qid + '.json'
-
-	try {
-		const response = await got(url,{
-			headers: {
-				'Accept' : 'application/json',
-				'User-Agent': 'USER thisismattmiller - Semlab'				  
-			}
-
-		});
-
-		let d = JSON.parse(response.body)
-	
-		if (d.entities && d.entities[qid]){
-
-			return d.entities[qid]
-
-		}
-
-
-	} catch (error) {
-		console.log(error)
-		console.log(error.response.body);
-		return false
-		//=> 'Internal server error ...'
-	}
-
-
-}
 
 
 exports.returnPlist = async function(){
