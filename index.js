@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload');
 const tika    = require('./app/modules/tika')
 const util    = require('./app/modules/util')
-
+const glob = require("glob")
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const sizeOf = require('image-size');
@@ -764,6 +764,57 @@ app.get('/document/:docId/work/data', async function (req, res) {
 
 	res.json(doc);
 })
+
+
+app.get('/docstatus',  function (req, res) {
+
+	if (req.session.wbus){
+
+
+
+		glob("tmp/*.index.json", {}, function (er, files) {
+		  // files is an array of filenames.
+		  // If the `nonull` option is set, and nothing
+		  // was found, then files is ["**/*.js"]
+		  // er is an error object or null.
+		  let data = []
+
+
+		  for (let f of files){
+
+		  	var doc = JSON.parse(fs.readFileSync(f, 'utf8'));
+
+		  	if (doc.currentStage == 'entities' || doc.currentStage == 'work'){
+			  	data.push({
+			  		user: doc.createdBy,
+			  		currentStage: doc.currentStage,
+			  		timestampStart: doc.timestampStart,
+			  		orginalFileName: doc.orginalFileName,
+			  		id: doc.id
+			  	})		  		
+		  	}
+
+		  }
+
+			data = data.sort((a,b) => (a.timestampStart > b.timestampStart) ? 1 : ((b.timestampStart > a.timestampStart) ? -1 : 0))
+
+			res.json(data)
+
+
+		})
+
+
+	}else{
+
+
+		res.json({msg:"Please log in to see doc status."})
+	}
+
+
+
+
+})
+
 
 app.get('/document/:docId/entities',  function (req, res) {
 	docId = req.params.docId

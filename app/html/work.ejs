@@ -194,16 +194,16 @@
                     <template v-for="word in block.words">
 
                         <span @click="publishedEntityClick(doc.entities[word.eId],block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner', 'word-ner-published']" :id="'b'+block.id+'-'+word.order" v-if="word.ner && doc.entities[word.eId] && doc.entities[word.eId].published" v-bind:style="{ 'background-color': returnInstanceOfColor(doc.entities[word.eId])}">                            
-                            {{word.contextualText+" "}}
+                            {{replaceEncodedChars(word.contextualText)+" "}}
                         </span>
                         <span @click="publishEntity(block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner', 'word-ner-unpublished']" :id="'b'+block.id+'-'+word.order" v-else-if="word.ner && doc.entities[word.eId] && !doc.entities[word.eId].published">
-                            {{word.contextualText+" "}}
+                            {{replaceEncodedChars(word.contextualText)+" "}}
                         </span>                        
                         <span @click="publishEntity(block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner']" :id="'b'+block.id+'-'+word.order" v-else-if="word.ner && !doc.entities[word.eId]">
-                            {{word.contextualText+" "}}
+                            {{replaceEncodedChars(word.contextualText)+" "}}
                         </span>
                         <span @click="publishEntity(block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word']" :id="'b'+block.id+'-'+word.order" v-else>
-                            {{word.orginalText+" "}}
+                            {{replaceEncodedChars(word.orginalText)+" "}}
                         </span>
 
 
@@ -600,7 +600,7 @@
                     this.publishedActiveFilterText = val    
                 }
 
-                
+
 
               if (this.timeout) clearTimeout(this.timeout)
 
@@ -705,6 +705,14 @@
 
 
   methods: {
+
+        replaceEncodedChars: function(text){
+
+            text = text.replaceAll('&#34;','"')
+
+            return text
+
+        },
 
         filterBlocks: function(filterValue){
 
@@ -977,7 +985,7 @@
               .then(data => {                
                 self.plist = data
                 
-
+                console.log(data)
                 self.possibleProperties = data.filter((f)=>{return f.type == "WikibaseItem"})
                 
                 self.possiblePropertiesLeft=[]
