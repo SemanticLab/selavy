@@ -272,11 +272,16 @@ exports.gatherBaseData = async function(qid){
 		});
 
 		let d = JSON.parse(response.body)
-		// console.log(d.results.bindings)
+
 		if (d.results.bindings.length>0){
 
-			rdict.instanceOf = d.results.bindings[0].instanceOf.value.split('/entity/')[1]
-			rdict.instanceOfLabel = d.results.bindings[0].instanceOfLabel.value
+			if (d.results.bindings[0].instanceOf){
+				rdict.instanceOf = d.results.bindings[0].instanceOf.value.split('/entity/')[1]
+				rdict.instanceOfLabel = d.results.bindings[0].instanceOfLabel.value
+			}else{
+				rdict.instanceOf = "Q999999999"
+				rdict.instanceOfLabel = 'Uknown Instance Of'
+			}
 
 
 
@@ -327,6 +332,72 @@ exports.returnEntity = async function(qid){
 
 
 }
+
+
+exports.returnProjects = async function(){
+
+	let url = 'https://query.semlab.io/proxy/wdqs/bigdata/namespace/wdq/sparql'
+
+	let sparql = `
+		SELECT ?item ?itemLabel 
+		WHERE 
+		{
+		  ?item wdt:P1 wd:Q19064. # Must be of a cat
+		  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". } # Helps get the label in your language, if not, then en language
+		}
+	`
+	const searchParams = new URLSearchParams([['query', sparql]]);
+
+	plist = []
+
+	try {
+		const response = await got(url,{
+			searchParams:searchParams,
+			headers: {
+				'Accept' : 'application/json',
+				'User-Agent': 'USER thisismattmiller - Semlab'				  
+			}
+
+		});
+
+		let d = JSON.parse(response.body)
+		// console.log(d.results.bindings)
+		if (d.results.bindings.length>0){
+
+			for (let p of d.results.bindings){
+				console.log(p)
+				let pid = p.item.value.split('/entity/')[1]
+				let plabel = ''
+				if (p.itemLabel.value){
+					plabel = p.itemLabel.value
+				}
+
+
+				plist.push({label:plabel,id:pid})
+			}
+
+
+
+		}
+
+
+        plist.sort((a, b) => a.label.localeCompare(b.label));
+
+
+		return plist
+
+	} catch (error) {
+		console.log(error)
+		console.log(error.response.body);
+		return plist
+		//=> 'Internal server error ...'
+	}
+
+
+}
+
+
+
 
 
 exports.returnPlist = async function(){
@@ -612,6 +683,818 @@ exports.publishEntity = async function(req, res){
 
 
 
+
+
+exports.unpublishTriple = async function(blockId,tripleId, doc, req){
+
+
+	let triple = doc.triples[blockId][tripleId]
+	let subjectItem, objectItem
+
+	try{
+		subjectItem = doc.entities[triple.s.eId.toString()].wiki.semlab
+		objectItem = doc.entities[triple.o.eId.toString()].wiki.semlab
+
+	}catch (error) {
+		console.log(error)
+		d.triples[blockId][tripleId].status={status:'Error parsing entities'}
+
+	}
+
+	let generalConfig = {
+	  instance: 'http://base.semlab.io/',
+	  credentials: {
+	    username: req.session.wbus,
+	    password: req.session.wbpw 
+	  }
+	}
+
+	let wbEdit = require('wikibase-edit')(generalConfig)
+
+	if (doc.triples[blockId][tripleId].undostatus){
+		doc.triples[blockId][tripleId].undostatus=''
+	}
+
+	if (triple.undo){
+
+		for (let undo of triple.undo.reverse()){
+
+
+			console.log(undo)
+
+			if (undo.type=='DELETE_CTX'){
+
+				try{
+
+					let guid = undo.claim
+					// qualifierHash can be either a single hash string or an array of reference hash strings
+					const qualifierHash = undo.value
+					let rqualifyer = await wbEdit.qualifier.remove({
+					  guid,
+					  hash: qualifierHash
+					})			
+
+
+				}catch (error) {
+					console.log(error)
+					if (!doc.triples[blockId][tripleId].undostatus){
+						doc.triples[blockId][tripleId].undostatus = ''
+					}
+					doc.triples[blockId][tripleId].undostatus = doc.triples[blockId][tripleId].undostatus + 'error removing context - ' + error.toString()
+				}
+
+			}else if (undo.type=='DELETE_REF'){
+
+				try{
+
+					let guid = undo.claim
+					// qualifierHash can be either a single hash string or an array of reference hash strings
+					const refHash = undo.value
+					let rref = await wbEdit.reference.remove({
+					  guid,
+					  hash: refHash
+					})			
+
+
+				}catch (error) {
+					console.log(error)
+					if (!doc.triples[blockId][tripleId].undostatus){
+						doc.triples[blockId][tripleId].undostatus = ''
+					}
+					doc.triples[blockId][tripleId].undostatus = doc.triples[blockId][tripleId].undostatus + 'error removing reference - ' + error.toString()
+				}
+
+			}else if (undo.type=='DELETE_CLAIM'){
+
+				try{
+
+					let guid = undo.value
+					let rclaim = await wbEdit.claim.remove({ guid })
+
+
+				}catch (error) {
+					console.log(error)
+					if (!doc.triples[blockId][tripleId].undostatus){
+						doc.triples[blockId][tripleId].undostatus = ''
+					}
+					doc.triples[blockId][tripleId].undostatus = doc.triples[blockId][tripleId].undostatus + 'error removing claim - ' + error.toString()
+				}
+
+			}
+
+		}
+
+
+		if (!doc.triples[blockId][tripleId].undostatus){
+			delete doc.triples[blockId][tripleId].undo
+			delete doc.triples[blockId][tripleId].undostatus
+			delete doc.triples[blockId][tripleId].status			
+		}else if(doc.triples[blockId][tripleId].undostatus==''){
+			delete doc.triples[blockId][tripleId].undo
+			delete doc.triples[blockId][tripleId].undostatus
+			delete doc.triples[blockId][tripleId].status
+		}
+
+
+	}
+
+
+	return doc
+}
+
+
+
+exports.publishTriple = async function(blockId,tripleId, doc, req){
+
+
+	let triple = doc.triples[blockId][tripleId]
+	let subjectItem, objectItem
+
+	try{
+		subjectItem = doc.entities[triple.s.eId.toString()].wiki.semlab
+		objectItem = doc.entities[triple.o.eId.toString()].wiki.semlab
+
+	}catch (error) {
+		console.log(error)
+		d.triples[blockId][tripleId].status={status:'Error parsing entities'}
+
+	}
+
+
+	let generalConfig = {
+	  instance: 'http://base.semlab.io/',
+	  credentials: {
+	    username: req.session.wbus,
+	    password: req.session.wbpw 
+	  }
+	}
+
+	let wbEdit = require('wikibase-edit')(generalConfig)
+
+
+	let subjectData = await this.returnEntity(subjectItem)
+
+
+
+	let hasClaim = false
+
+	if (subjectData.claims[triple.p.id]){
+
+		// it might have the claim ,but does it have the claim for this value?
+		for (let claim of subjectData.claims[triple.p.id]){
+			if (claim.mainsnak.datavalue.value.id == objectItem){
+
+				hasClaim = true
+
+			}
+		}
+
+
+	}
+
+
+
+
+
+	if (hasClaim){
+
+
+		console.log("Already has claim:",subjectData.claims[triple.p.id])
+
+		let hasRightRef = false
+		let claimID = null
+
+
+		// it already has the claim, but does it have the reference for our new claim
+
+		for (let claim of subjectData.claims[triple.p.id]){
+
+			
+
+			// is the right claim for our value?
+			console.log(claim.mainsnak.datavalue)
+
+			if (claim.mainsnak.datavalue.value.id == objectItem){
+
+
+				claimID = claim.id
+				console.log(claim.references)
+
+
+				for (let ref of claim.references){
+					if (ref.snaks.P26){
+						for (let val of ref.snaks.P26){
+							console.log(val.datavalue)	
+							if (val.datavalue && val.datavalue.value){
+								if (val.datavalue.value.id == doc.blocks[blockId].qid){
+									hasRightRef = true
+								}
+							}
+						}						
+					}					
+				}
+
+
+				// loop through the qualifiers thatare supposed to be ther and see if they are
+
+
+				for (let ctx of doc.triples[blockId][tripleId].context){
+
+					let ctxP = ctx.p.id
+					let ctxO = doc.entities[ctx.o.eId.toString()].wiki.semlab
+
+					console.log("Looking for qualfier:",ctxP,ctxO)
+					let addQualifer = true
+
+					if (claim.qualifiers){
+
+						if (claim.qualifiers[ctxP]){			
+							for (let qval of claim.qualifiers[ctxP]){
+								console.log(qval)
+								if (qval.datavalue.value.id == ctxO){
+									addQualifer = false
+								}
+							}
+						}
+					}else{
+						addQualifer = true
+					}
+
+					if (addQualifer){
+
+						try{
+
+							let guid = claimID
+							// entity qualifier
+							const rrr = await  wbEdit.qualifier.set({
+								guid,
+								property: ctxP,
+								value: ctxO
+							})
+
+							console.log('rrr',rrr)
+							if (rrr.success && rrr.success == 1){
+
+								// it was created, store the id
+								if (!doc.triples[blockId][tripleId].undo){
+									doc.triples[blockId][tripleId].undo = []
+								}
+
+								let qalHash
+
+								for (let qval of rrr.claim.qualifiers[ctxP]){
+									if (qval.datavalue.value.id == ctxO){
+										qalHash=qval.hash
+									}
+								}
+
+
+
+								doc.triples[blockId][tripleId].undo.push({
+									'type':'DELETE_CTX',
+									'value': qalHash,
+									'claim': claimID
+								})
+
+								doc.triples[blockId][tripleId].status = "published"
+
+							}else{
+
+								doc.triples[blockId][tripleId].status = 'Could not create ctx, r.success != 1'
+
+							}
+
+						}catch (error) {
+							console.log(error)
+							doc.triples[blockId][tripleId].status = 'error creating ctx - ' + error.toString()
+
+						}
+
+
+					}
+
+
+				}
+
+
+
+
+
+
+			}
+
+		}
+		
+		console.log('hasRightRef:',hasRightRef)
+
+		// no it doesn, make it
+		if (!hasRightRef){
+
+			console.log("making new ref on claimID:",claimID)
+
+
+			let blockQId = doc.blocks[blockId].qid
+
+			try{
+				const guid = claimID
+				const rr = await wbEdit.reference.set({
+				  guid,
+				  snaks: {
+				    P26: blockQId,
+				  }
+				})
+
+				if (rr.success && rr.success == 1){
+
+					// it was created, store the id
+					if (!doc.triples[blockId][tripleId].undo){
+						doc.triples[blockId][tripleId].undo = []
+					}
+
+					doc.triples[blockId][tripleId].undo.push({
+						'type':'DELETE_REF',
+						'value': rr.reference.hash,
+						'claim': claimID
+					})
+
+					doc.triples[blockId][tripleId].status = "published"
+
+				}else{
+
+					doc.triples[blockId][tripleId].status = 'Could not create reference, r.success != 1'
+
+				}
+
+
+			}catch (error) {
+				console.log(error)
+				doc.triples[blockId][tripleId].status = 'error creating reference - ' + error.toString()
+
+			}
+
+
+
+
+
+
+		}
+
+
+	}else{
+
+		console.log(triple.p.id,'does not exist')
+		let claimID = null
+
+		try{
+			const r = await wbEdit.claim.create({
+			  id: subjectItem,
+			  property: triple.p.id,
+			  value: objectItem
+			})			
+
+			if (r.success && r.success == 1){
+
+				// it was created, store the id
+				if (!doc.triples[blockId][tripleId].undo){
+					doc.triples[blockId][tripleId].undo = []
+				}
+
+				doc.triples[blockId][tripleId].undo.push({
+					'type':'DELETE_CLAIM',
+					'value': r.claim.id,
+					'claim': claimID
+				})
+
+				doc.triples[blockId][tripleId].status = "published"
+				claimID = r.claim.id
+
+			}else{
+
+				doc.triples[blockId][tripleId].status = 'Could not create claim, r.success != 1'
+
+			}
+			
+
+		}catch (error) {
+			console.log(error)
+			doc.triples[blockId][tripleId].status = 'error - ' + error.toString()
+
+		}
+
+
+		// since we jsut created the claim we need to add the block reference for sure
+		if (doc.triples[blockId][tripleId].status == "published"){
+
+
+			// getthe block id
+
+			let blockQId = doc.blocks[blockId].qid
+
+			try{
+				const guid = claimID
+				const rr = await wbEdit.reference.set({
+				  guid,
+				  snaks: {
+				    P26: blockQId,
+				  }
+				})
+
+				if (rr.success && rr.success == 1){
+
+					// it was created, store the id
+					if (!doc.triples[blockId][tripleId].undo){
+						doc.triples[blockId][tripleId].undo = []
+					}
+
+					doc.triples[blockId][tripleId].undo.push({
+						'type':'DELETE_REF',
+						'value': rr.reference.hash,
+						'claim': claimID
+					})
+
+					doc.triples[blockId][tripleId].status = "published"
+
+				}else{
+
+					doc.triples[blockId][tripleId].status = 'Could not create reference, r.success != 1'
+
+				}
+
+
+			}catch (error) {
+				console.log(error)
+				doc.triples[blockId][tripleId].status = 'error creating reference - ' + error.toString()
+
+			}
+
+
+
+			// Also create the qualifiers, its a new claim so it doesnt exist
+
+			for (let ctx of doc.triples[blockId][tripleId].context){
+
+				let ctxP = ctx.p.id
+				let ctxO = doc.entities[ctx.o.eId.toString()].wiki.semlab
+
+				const guid = claimID
+
+				try{
+
+					// entity qualifier
+					const rrr = await  wbEdit.qualifier.set({
+						guid,
+						property: ctxP,
+						value: ctxO
+					})
+
+					console.log('rrr',rrr)
+					console.log('--------')
+					console.log(JSON.stringify(rrr,null,2))
+					if (rrr.success && rrr.success == 1){
+
+						// it was created, store the id
+						if (!doc.triples[blockId][tripleId].undo){
+							doc.triples[blockId][tripleId].undo = []
+						}
+
+						let qalHash
+
+						for (let qval of rrr.claim.qualifiers[ctxP]){
+							if (qval.datavalue.value.id == ctxO){
+								qalHash=qval.hash
+							}
+						}
+
+
+						doc.triples[blockId][tripleId].undo.push({
+							'type':'DELETE_CTX',
+							'value': qalHash,
+							'claim': claimID
+						})
+
+						doc.triples[blockId][tripleId].status = "published"
+
+					}else{
+
+						doc.triples[blockId][tripleId].status = 'Could not create ctx, r.success != 1'
+
+					}
+
+				}catch (error) {
+					console.log(error)
+					doc.triples[blockId][tripleId].status = 'error creating ctx - ' + error.toString()
+
+				}
+
+
+
+
+
+			}
+
+
+
+
+
+
+
+
+		}
+
+
+
+
+	}
+
+
+
+
+
+
+	console.log(doc.triples[blockId][tripleId])
+
+	console.log(subjectData)
+
+	return doc
+
+}
+
+
+exports.publishBlock = async function(doc,blockId, req){
+
+
+
+	let blockType = ['Q2013']
+	let textUrl = `https://semlab.s3.amazonaws.com/texts/${doc.publish.qid}/${blockId}.txt`
+
+	let blockText = doc.blocks[blockId].text
+
+
+	if (doc.publish && doc.publish.replaceWith){
+		for (let patterns of doc.publish.replaceWith){
+
+			let lookFor = patterns[0]
+			let replaceWith = patterns[1]
+
+			let replace = lookFor;
+			let re = new RegExp(replace,"g");
+
+			blockText = blockText.replace(re, replaceWith);
+
+		}
+	}
+
+	blockText=blockText.replace(/\n/g,' ')
+	blockText=blockText.trim()
+	if (blockText.length>=400){
+		blockText = blockText.substring(0,396) + '...'
+	}
+
+	let associatedEntites = []
+
+
+ 
+
+
+
+	for (let b of doc.blocks[blockId].words){
+
+		if (b.eId){
+
+			let i = b.eId.toString()
+			if (doc.entities[i]){
+
+				if (doc.entities[i].wiki && doc.entities[i].wiki.semlab){
+					// console.log(b)
+					// console.log(doc.entities[i].wiki)
+					// console.log('-------')
+					associatedEntites.push(doc.entities[i].wiki.semlab)
+				}
+
+			}
+
+
+		}
+	}
+
+
+	associatedEntites = associatedEntites.filter(function(elem, pos) {
+	    return associatedEntites.indexOf(elem) == pos;
+	})
+
+
+
+
+
+	let payload = {
+		  type: 'item',	
+		  // All the rest is optional but one of labels, descriptions, aliases, claims, or sitelinks must be set
+		  labels: {
+		    // Set a label
+		    en: 'Block ' + blockId + ' of ' + doc.publish.docLabel,
+		  },
+		  descriptions: {
+		    // // Set a description
+		    en: 'Block ' + blockId + ' of ' + doc.publish.docLabel,
+		    // // Remove a description
+		    // fr: null
+		  },
+		  aliases: {
+		    // // Pass aliases as an array
+		    // en: [ 'foo', 'bar' ],
+		    // // Or a single value
+		    // de: 'buzz',
+		    // // /!\ for any language specified, the values you pass will overwrite the existing values,
+		    // // which means that the following empty array will remove all existing aliases in French.
+		    // fr: [],
+		    // // To add aliases without removing existing values, you must set 'add=true'
+		    // nl: [
+		    //   { value: 'bul', add: true },
+		    //   { value: 'groz', add: true },
+		    // ],
+		    // // The same effect of clearing all aliases in a given language can be optained by passing null
+		    // es: null
+		  },
+		  claims: {
+		    // Pass values as an array
+		    P1: blockType,
+		    P11: doc.publish.project, // part of project
+		    P24: [doc.publish.qid], // parent document
+		    P17: blockId.toString(), // local id
+		    P19: blockText, // text
+		    P20: textUrl, // url
+		    P21: associatedEntites,
+
+
+
+		    // // Or a single value
+		    // P2002: 'bulgroz',
+		    // // Or a rich value object, like a monolingual text
+		    // P2093: { text: 'Author Authorson', language: 'en' },
+		    // // Or even an array of mixed simple values and rich object values
+		    // P1106: [ 42, { amount: 9001, unit: 'Q7727' } ],
+		    // // Add statements with special snaktypes ('novalue' or 'somevalue')
+		    // P626: { snaktype: 'somevalue' },
+		    // // or special rank (Default: 'normal'. Possible values: 'preferred' or 'deprecated')
+		    // P6089: { rank: 'preferred', value: 123 },
+		    // // Add qualifiers and references to value objects
+		    // P369: [
+		    //   // Qualifier values can also be passed in those different forms
+		    //   {
+		    //     value: 'Q5111731',
+		    //     qualifiers: {
+		    //       P580: '1789-08-04'
+		    //       P1416: [ 'Q13406268', 'Q32844021' ],
+		    //       P1106: { amount: 9001, unit: 'Q7727', lowerBound: 9000, upperBound: 9315 }
+		    //     }
+		    //   },
+		    //   // References can be passed as a single record group
+		    //   { value: 'Q2622004', references: { P143: 'Q8447' } },
+		    //   // or as multiple records
+		    //   {
+		    //     value: 'Q2622009',
+		    //     references: [
+		    //       { P855: 'https://example.org', P143: 'Q8447' },
+		    //       { P855: 'https://example2.org', P143: 'Q8447' }
+		    //     ]
+		    //   }
+		    // ],
+		    // P1114: [
+		    //   // Edit an existing claim
+		    //   // /!\ Beware that while editing an existing claim,
+		    //   //     anything omitted (rank, qualifiers, or references) will be omitted!!
+		    //   { id: 'Q4115189$BC5F4F72-5B49-4991-AB0F-5CC8D4AAB99A', value: 123 },
+		    //   // Remove an existing claim
+		    //   { id: 'Q4115189$afc56f6c-4e91-c89d-e287-d5691aeb063a', remove: true }
+		    // ]
+		  },
+		  sitelinks: {
+		    // // Set a sitelink
+		    // frwiki: 'eviv bulgroz',
+		    // // Remove a sitelink
+		    // eswikisource: null
+		  },
+
+		  // For convenience, the summary and baserevid can also be passed from this edit object
+		  summary: 'Selavy'
+		}
+
+
+
+	if (!req.session.wbpw || !req.session.wbus){
+		
+		doc.blocks[blockId].publishStatus = 'error - NOT LOGGED IN'
+
+	}
+
+
+
+
+
+	let generalConfig = {
+	  instance: 'http://base.semlab.io/',
+	  credentials: {
+	    username: req.session.wbus,
+	    password: req.session.wbpw 
+	  }
+	}
+
+	let wbEdit = require('wikibase-edit')(generalConfig)
+
+	try{
+
+		const { entity } = await wbEdit.entity.create(payload)
+
+
+		
+		doc.blocks[blockId].qid = entity.id
+		doc.blocks[blockId].publishStatus = 'published'
+
+
+
+	}catch (error) {
+		console.log(error)
+		doc.blocks[blockId].publishStatus = 'error - ' + error.toString()
+
+	}
+
+
+
+
+
+
+
+	console.log(doc.blocks[blockId])
+
+
+	return doc
+
+}
+
+
+
+exports.deleteBlock = async function(doc,blockId, req){
+
+
+
+	if (doc.blocks[blockId].qid){
+
+
+		if (!req.session.wbpw || !req.session.wbus){
+			
+			doc.blocks[blockId].publishStatus = 'error - NOT LOGGED IN'
+
+		}
+
+
+
+
+		let generalConfig = {
+		  instance: 'http://base.semlab.io/',
+		  credentials: {
+		    username: req.session.wbus,
+		    password: req.session.wbpw 
+		  }
+		}
+
+		let wbEdit = require('wikibase-edit')(generalConfig)
+
+		try{
+
+
+			const { entity } = await wbEdit.entity.delete({ id: doc.blocks[blockId].qid })
+
+
+			if (doc.blocks[blockId].qid){
+				delete doc.blocks[blockId].qid
+			}
+			
+			if (delete doc.blocks[blockId].publishStatus){
+				delete doc.blocks[blockId].publishStatus
+			}
+
+
+
+
+		}catch (error) {
+			console.log(error)
+			doc.blocks[blockId].publishStatus = 'error - ' + error.toString()
+
+		}
+
+
+	}else{
+
+		doc.blocks[blockId].publishStatus = 'error - QID Not Set'
+
+	}
+
+
+
+
+	return doc
+
+}
 
 
 

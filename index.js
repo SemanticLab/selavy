@@ -313,6 +313,88 @@ app.get('/document/:id/clean', function(req, res) {
 });
 
 
+
+app.get('/document/:id/publishblock/:block', async function(req, res) {
+
+	var d = JSON.parse(fs.readFileSync('/tmp_data/'+req.params.id + '.meta.json', 'utf8'));
+
+	let block = parseInt(req.params.block)
+
+	d = await util.publishBlock(d,block,req)
+
+
+	fs.writeFileSync('/tmp_data/'+req.params.id +'.meta.json', JSON.stringify(d,null,2));
+
+
+	res.json(d.blocks[block]);
+
+
+
+});
+
+
+app.get('/document/:id/publishtriple/:blockId/:tripleId', async function(req, res) {
+
+	var d = JSON.parse(fs.readFileSync('/tmp_data/'+req.params.id + '.meta.json', 'utf8'));
+
+	let blockId = parseInt(req.params.blockId)
+	let tripleId = parseInt(req.params.tripleId)
+
+
+	
+
+	d = await util.publishTriple(blockId,tripleId,d,req)
+
+	fs.writeFileSync('/tmp_data/'+req.params.id +'.meta.json', JSON.stringify(d,null,2));
+
+
+	res.json(d.triples[blockId][tripleId]);
+
+
+});
+
+app.get('/document/:id/unpublishtriple/:blockId/:tripleId', async function(req, res) {
+
+	var d = JSON.parse(fs.readFileSync('/tmp_data/'+req.params.id + '.meta.json', 'utf8'));
+
+	let blockId = parseInt(req.params.blockId)
+	let tripleId = parseInt(req.params.tripleId)
+
+	d = await util.unpublishTriple(blockId,tripleId,d,req)
+
+	fs.writeFileSync('/tmp_data/'+req.params.id +'.meta.json', JSON.stringify(d,null,2));
+
+	res.json(d.triples[blockId][tripleId]);
+
+
+});
+
+
+
+app.get('/document/:id/deleteblock/:block', async function(req, res) {
+
+	var d = JSON.parse(fs.readFileSync('/tmp_data/'+req.params.id + '.meta.json', 'utf8'));
+
+	let block = parseInt(req.params.block)
+
+	d = await util.deleteBlock(d,block,req)
+
+
+	fs.writeFileSync('/tmp_data/'+req.params.id +'.meta.json', JSON.stringify(d,null,2));
+
+
+	res.json(d.blocks[block]);
+
+
+
+
+
+});
+
+
+
+
+
 app.post('/block',  function (req, res) {
 	docId = req.body.id
 	var doc = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.meta.json', 'utf8'));
@@ -323,6 +405,114 @@ app.post('/block',  function (req, res) {
 	res.redirect(`/document/${docId}/block`);	
 			
 });
+
+
+app.post('/checkentities', async function (req, res) {
+
+
+
+	// res.render('clean',{doc: doc})
+
+	let results = []
+
+	for (let e of req.body.entities){
+
+
+
+		let data = await util.returnEntity(e)
+
+		if (!data){
+			// results = results + '***NOT FOUND*** -- ' + e + '\n'
+			results.push({l:"**NOT FOUND**",qid:e, okay:false})
+		}else{
+
+			let l = 'unknown'
+
+			if (data.labels.en && data.labels.en.value){
+				l = data.labels.en.value
+			}
+			
+			results.push({l:l,qid:e, okay:true})
+
+		}
+
+
+
+
+
+	}
+
+
+
+	res.json(results);
+
+			
+});
+
+
+
+
+
+
+
+
+app.post('/document/:id/setproject',  function (req, res) {
+	docId = req.body.id
+	var doc = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.meta.json', 'utf8'));
+
+	doc.publish.project = req.body.project
+	fs.writeFileSync('/tmp_data/'+docId+'.meta.json', JSON.stringify(doc,null,2));
+
+	return res.status(200).send("OKAY");
+
+});
+
+app.post('/document/:id/setreplacewith',  function (req, res) {
+	docId = req.body.id
+	var doc = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.meta.json', 'utf8'));
+
+	doc.publish.replaceWith = req.body.replaceWith
+	fs.writeFileSync('/tmp_data/'+docId+'.meta.json', JSON.stringify(doc,null,2));
+
+	return res.status(200).send("OKAY");
+
+});
+
+
+app.post('/document/:id/fixbadqnum',  function (req, res) {
+	docId = req.body.id
+	from = req.body.from
+	to = req.body.to
+	var doc = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.meta.json', 'utf8'));
+	let msg = ''
+	for (let key in doc.entities){
+
+		if (doc.entities[key].wiki && doc.entities[key].wiki.semlab && doc.entities[key].wiki.semlab == from){
+			doc.entities[key].wiki.semlab = to
+			msg = msg + 'changed entity ' + key + ' to qid ' + to + ' from qid ' + from
+		}
+
+	}
+
+
+
+
+	fs.writeFileSync('/tmp_data/'+docId+'.meta.json', JSON.stringify(doc,null,2));
+	if (msg==''){
+		msg='Did not change anything, found no match.'
+	}
+	return res.json(doc.entities);;
+	
+	
+
+});
+
+
+
+
+
+
+
 
 
 
@@ -766,6 +956,8 @@ app.get('/document/:docId/work/data', async function (req, res) {
 })
 
 
+
+
 app.get('/docstatus',  function (req, res) {
 
 	if (req.session.wbus){
@@ -827,6 +1019,17 @@ app.get('/document/:docId/work',  function (req, res) {
 	res.render('work',{docId:docId})
 })
 
+app.get('/document/:docId/buildblocks',  function (req, res) {
+	docId = req.params.docId
+	console.log(req.session.wbus)
+	res.render('buildblocks',{docId:docId})
+})
+
+app.get('/document/:docId/buildtriples',  function (req, res) {
+	docId = req.params.docId
+	console.log(req.session.wbus)
+	res.render('buildtriples',{docId:docId})
+})
 
 app.post('/document/:docId/entities/data',  function (req, res) {
 	
@@ -845,6 +1048,7 @@ app.post('/document/:docId/save',  function (req, res) {
 	doc.blocks = req.body.blocks	
 	doc.triples = req.body.triples	
 	doc.entities = req.body.entities	
+	doc.publish = req.body.publish	
 
 
 
@@ -864,6 +1068,22 @@ app.post('/publish',  function (req, res) {
 
 })
 
+
+
+
+app.get('/projects',  function (req, res) {
+
+	let plist = {};
+	(async () => {		
+		plist = await util.returnProjects()
+	})().then(()=>{
+
+		res.json(plist);
+	});
+	
+})
+
+
 app.get('/plist',  function (req, res) {
 
 	let plist = {};
@@ -873,12 +1093,9 @@ app.get('/plist',  function (req, res) {
 
 		res.json(plist);
 	});
-
-
-
-
 	
 })
+
 
 
 app.get('/clist',  function (req, res) {

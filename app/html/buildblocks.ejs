@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en" class="keep-it-100">
+<head>
+
+
+
+
+    <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+    <link rel="stylesheet" type="text/css" href="/html/css/all.min.css" >
+
+    
+    <script type="text/javascript" src="/html/js/vue.js"></script>
+    <script type="text/javascript" src="/html/js/Sortable.min.js"></script>
+    <script type="text/javascript" src="/html/js/vuedraggable.umd.min.js"></script>
+
+
+
+    <script type="application/javascript" src="/html/js/palette.js"></script>
+
+    <style>
+    	
+
+    </style>
+
+
+
+</head>
+<body class="container is-fluid keep-it-100">
+
+
+
+    <script>
+    	var docId = "<%- docId %>";
+    </script>
+
+
+
+
+    <div id="app">
+
+        <h1>Publish Blocks</h1>
+
+        <hr>
+        <details>
+            <summary style="cursor: pointer;">Text clean up</summary>
+            <p>Add in the values you want to be converted in the block text. The first field is for what to look for and the second is what to replace it with.</p>
+
+            <div v-for="t in findReplace" :key="t[0]">
+                    
+                <code>{{t[0]}} -&gt; {{t[1]}}</code><button @click="removeLookForReplaceWith(t)">Remove</button>
+
+
+            </div>
+
+            <input v-model="lookFor" placeholder="Look For" value=""> -&gt; <input v-model="replaceWith" value="" placeholder="Replace With"> <button @click="addLookForReplaceWith">Add</button>
+
+        </details>
+
+        <hr>
+        <div>Select which project(s) these entities will belong to:</div>
+        <select @change="projectSelect" id="project-select" multiple style="height: 9em;">
+            
+            <option v-for="p in projects" :key="p.id" :selected="doc.publish.project.indexOf(p.id) > -1"  :value="p.id">{{p.label}}</option>
+
+        </select>
+
+        <div v-if="doc && doc.publish && doc.publish.project.length==0" style="font-weight: bold; color:darkred"> *** You must select at least one project *** </div>
+
+        <hr>
+
+        <button class="button" @click="checkEntities">{{entitiesCheckedButtonLabel}}</button>
+            <div v-for="e in entitiesCheckedResults" :key="e.qid">
+                <span v-if="e.okay">✅ {{e.l}} - {{e.qid}}</span>
+                <span style="background-color: #ffc107;" v-else>❌ {{e.l}} - <a target="_blank" :href="'https://base.semlab.io/wiki/Item:' + e.qid">{{e.qid}}</a> : {{entitiesCheckedLabelLookup[e.qid]}} <input type="text" placeholder="new qid"><button @click="fixBadQnum($event, e.qid)">Set</button> </span>
+            </div>
+
+        <hr>
+
+        <button v-if="entitiesChecked==true && (doc && doc.publish && doc.publish.project.length>0)" class="button" @click="publishAllBlock()">{{publishAllStatus}}</button>
+        <button v-if="entitiesChecked==true" class="button is-warning" @click="deleteAllBlock()">{{deleteAllStatus}}</button>
+
+        <div v-for="block in blocks" :key="block.id" style="display: flex;">
+            
+            <div style="flex:1; max-width: 20%; width: 20%;">
+                {{block.id}} - {{block.publishStatus}}
+                <button v-if="!block.qid && entitiesChecked==true && block.publishStatus != 'Working...' && (doc && doc.publish && doc.publish.project.length>0)" class="button" @click="publishBlock(block.id)">Publish</button>
+                
+                <button v-if="block.qid && block.publishStatus != 'Working...'" class="button is-warning" @click="deleteBlock(block.id)">Delete</button>
+                <a :href="'https://base.semlab.io/wiki/Item:'+block.qid" v-if="block.qid" target="_blank">{{block.qid}}</a>
+
+            </div>    
+            <div style="flex:1; max-width: 88%; width: 88%;">
+                <pre>
+                    {{block.text}}
+                </pre>
+            </div> 
+
+        </div>
+
+
+        <a :href="'/document/'+docId+'/buildtriples/'" style="margin-bottom: 2em; margin-top: 2em;" class="button is-success" v-if="nextStep">Next Step - Triples</a>
+
+	</div>
+
+
+
+<script >
+
+
+
+	var app = new Vue({
+	  el: '#app',
+	  data: {
+	    doc: {},
+        projects:[],
+        findReplace: [],
+        lookFor:null,
+        replaceWith:null,
+        blocks: [],
+        entitiesChecked: false,
+        entitiesCheckedResults: [],
+        entitiesCheckedButtonLabel: 'Please Check Entities',
+        entitiesCheckedLabelLookup: {},
+        deleteAllStatus: 'Delete All',
+        publishAllStatus: 'Publish All',
+        nextStep: false,
+
+
+
+
+	  },
+      components: {
+        vuedraggable
+
+      },
+      computed: {
+
+    },
+
+
+	  created: function(){
+
+	  	let self = this
+
+		fetch(`/document/${docId}/work/data`)
+		  .then(response => response.json())
+		  .then(data => {
+		  	
+		  	self.doc = data		  
+            self.findReplace = data.publish.replaceWith
+            if (!self.findReplace){
+                self.findReplace=[]
+            }
+
+            if (!self.doc.publish.project){
+                self.doc.publish.project=[]
+            }
+            self.filterBlocks()
+
+		  });	
+
+
+
+        fetch('/projects/')
+          .then(response => response.json())
+          .then(data => {
+            
+            self.projects = data
+
+
+
+
+          });   
+
+
+
+
+
+	  },
+
+
+
+
+  methods: { 
+
+
+        projectSelect: function(event){
+
+            const selected = document.querySelectorAll('#project-select option:checked');
+            const values = Array.from(selected).map(el => el.value);
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", `/document/${docId}/setproject`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = () => {
+                // do something to response
+
+            }
+
+            
+            xhr.send(JSON.stringify({
+                id: docId,
+                project:values
+
+            }));  
+
+
+            this.doc.publish.project = values
+
+        },
+
+
+        fixBadQnum: function(event,from){
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", `/document/${docId}/fixbadqnum`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = () => {
+                // do something to response
+                this.doc.entities = JSON.parse(xhr.responseText)
+                this.checkEntities()
+               
+
+                
+            }
+
+            
+            xhr.send(JSON.stringify({
+                id: docId,
+                from:from,
+                to:event.target.previousSibling.value
+
+            }));  
+
+
+
+
+
+
+        },
+
+        saveReplaceWith: function(){
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", `/document/${docId}/setreplacewith`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = () => {
+                // do something to response
+
+            }
+
+            
+            xhr.send(JSON.stringify({
+                id: docId,
+                replaceWith:this.findReplace
+
+            }));  
+
+
+        },
+
+
+        checkEntities: function(){
+
+            this.entitiesCheckedResults=[]
+            this.entitiesCheckedLabelLookup = {}
+            this.entitiesCheckedButtonLabel = "Working..."
+            let entities = []
+            for (let e in this.doc.entities){
+
+                if (this.doc.entities[e].wiki && this.doc.entities[e].wiki.semlab){
+
+                    entities.push(this.doc.entities[e].wiki.semlab)
+
+                    this.entitiesCheckedLabelLookup[this.doc.entities[e].wiki.semlab] = this.doc.entities[e].nerName
+                    
+
+                }
+
+            }
+
+
+            uniqueArray = entities.filter(function(elem, pos) {
+                return entities.indexOf(elem) == pos;
+            })
+
+
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", `/checkentities`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = () => {
+                // do something to response
+                this.entitiesCheckedResults = JSON.parse(xhr.responseText)
+                this.entitiesChecked=true
+                this.entitiesCheckedButtonLabel = "Check Again"
+            }
+
+            
+            xhr.send(JSON.stringify({
+
+                entities:uniqueArray
+
+            }));  
+
+
+
+        },
+
+
+
+        addLookForReplaceWith: function(){
+
+
+            if (this.lookFor !== null && this.replaceWith !== null){
+                this.findReplace.push([this.lookFor,this.replaceWith])
+            }
+
+            this.filterBlocks()
+            this.saveReplaceWith()
+        },
+
+
+
+        removeLookForReplaceWith: function(lookfor){
+
+            let newFindReplace = []
+
+            for (let v of this.findReplace){
+                if (v[0] == lookfor[0] && v[1] == lookfor[1]){
+                   continue
+                }else{
+                    newFindReplace.push(v)
+                }
+            }
+
+
+            this.findReplace = newFindReplace
+
+            this.filterBlocks()
+
+            this.saveReplaceWith()
+        },
+
+
+
+        filterBlocks: function(){
+
+            this.blocks = []
+            this.nextStep = true
+            for (let b of this.doc.blocks){
+
+                for (let fr of this.findReplace){
+                    b.text = b.text.replaceAll(fr[0],fr[1])    
+                }
+
+                if (!b.publishStatus){
+                    b.publishStatus = "Unpublished"
+                }
+                if (!b.qid){
+                    this.nextStep=false
+                }
+
+                this.blocks.push(b)
+                
+
+            }
+
+
+
+
+        },
+
+
+        publishBlock: async function(id){
+
+
+
+            this.blocks.forEach((b)=>{
+
+                if (b.id == id){
+                    b.publishStatus = 'Working...'
+                }
+
+            })
+
+
+            const publishResponse = await fetch(`/document/${docId}/publishblock/${id}`);
+            const publishResult = await publishResponse.json();
+
+
+            for (let key in this.doc.blocks){
+                if (this.doc.blocks[key].id == publishResult.id){
+                    this.doc.blocks[key] = publishResult
+                }
+
+            }
+
+            this.filterBlocks()
+
+
+
+
+        },
+
+
+
+
+        deleteBlock: async function(id){
+
+
+
+            this.blocks.forEach((b)=>{
+
+                if (b.id == id){
+                    b.publishStatus = 'Working...'
+                }
+
+            })
+
+
+            const publishResponse = await fetch(`/document/${docId}/deleteblock/${id}`);
+            const publishResult = await publishResponse.json();
+
+
+            for (let key in this.doc.blocks){
+                if (this.doc.blocks[key].id == publishResult.id){
+                    this.doc.blocks[key] = publishResult
+                }
+
+            }
+
+            this.filterBlocks()
+
+
+
+
+        },
+
+
+        deleteAllBlock: async function(id){
+
+            for (let b of this.doc.blocks){
+
+                if (b.qid){
+                    console.log(b.id,b.qid)
+                    this.deleteAllStatus = "Working on: " + b.id + " (" + b.qid + ")"
+                    let x = await this.deleteBlock(b.id)
+
+                }
+
+
+            }
+
+            this.filterBlocks()
+            this.deleteAllStatus = 'Done'
+
+        },
+
+
+        publishAllBlock: async function(id){
+
+            for (let b of this.doc.blocks){
+
+                if (!b.qid){
+                    console.log(b.id,b.qid)
+                    this.publishAllStatus = "Working on: " + b.id + " (" + b.qid + ")"
+                    let x = await this.publishBlock(b.id)
+
+                }
+
+
+            }
+
+            this.filterBlocks()
+            this.publishAllStatus = 'Done'
+
+        },
+
+
+
+
+
+
+
+
+
+    },
+
+
+  })
+
+
+</script>
+
+</body>
+
+
+
+
+</html>

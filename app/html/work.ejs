@@ -506,6 +506,65 @@
                     </details>
 
                 </div>
+
+                <div>
+                    
+                    <hr>
+                    <details>
+                        
+
+                        <summary style="cursor: pointer;">Publish Into Wikibase</summary>
+                        
+
+                        <div v-if="!docQId">
+
+                            <div>
+
+                                <span>What is the QID for this document?</span>
+                                <input v-model="docQId" type="text" name="" placeholder="QID Here">
+
+                            </div>
+                            <div>
+                                    <button @click="publishValidateDocId()" class="button is-small" ref="publushValidateQidButton">Validate QId</button>
+                            </div>
+                        </div>
+
+                        <div v-else>
+
+                            <div>DOC: <span style="font-weight:bold">{{doc.publish.docLabel}}</span></div>
+
+                            <div style="margin-bottom: 1em">
+                            <a class="button is-success is-small" :href="'/document/'+doc.id+'/buildblocks'">Build Blocks Page</a>
+                            </div>
+
+
+                            <details>
+                                
+
+                                <summary style="cursor: pointer;">Change Doc Qid</summary>
+
+                                <div>
+
+                                    <span>What is the QID for this document?</span>
+                                    <input v-model="docQId" type="text" name="" placeholder="QID Here">
+
+                                </div>
+                                <div>
+                                        <button @click="publishValidateDocId()" class="button is-small" ref="publushValidateQidButton">Validate QId</button>
+                                </div>
+
+
+                            </details>
+
+
+                        </div>
+
+
+                    </details>
+
+                </div>
+
+
             </div>
 
 
@@ -545,6 +604,8 @@
         possiblePropertiesRight: [],
         possiblePropertiesLeft: [],     
         tripleEntitiesPalette: [],
+
+        docQId: null,
 
 
         needsSaving: false,
@@ -662,6 +723,9 @@
 
             self.refreshClist()
 
+            if (self.doc.publish && self.doc.publish.qid){
+                self.docQId = self.doc.publish.qid
+            }
 
 
             document.body.addEventListener('keydown',(event)=>{
@@ -709,6 +773,9 @@
         replaceEncodedChars: function(text){
 
             text = text.replaceAll('&#34;','"')
+            text = text.replaceAll('&#39;',"'")
+
+
 
             return text
 
@@ -804,6 +871,39 @@
             });
 
 
+
+
+        },
+
+        publishValidateDocId: async function(){
+
+
+
+            const response = await fetch('/entity/'+this.docQId);
+            const data = await response.json();            
+            console.log(data)
+            if (!data){
+
+                alert('Could not find that Q Number, double check and try again')
+
+            }else{
+
+                if (this.doc.publish){
+                    if (!confirm('Looks like the publish process has been started, do you want to restart the process? *IF SO MAKE SURE ANY ENTITIES (Blocks, triples, etc) CREATED FROM BEFORE HAVE BEEN REMOVED*')){
+                        return false
+                    }
+                }
+
+                this.doc.publish = {
+
+                    'docLabel': data.labels.en.value,
+                    'stage': 'blocks',
+                    'qid': this.docQId
+
+                }
+
+                this.saveDoc()
+            }
 
 
         },
@@ -1460,7 +1560,8 @@
                 id: docId,
                 blocks: this.doc.blocks,
                 triples: this.blockTriples,
-                entities: this.doc.entities
+                entities: this.doc.entities,
+                publish: this.doc.publish
             }));            
 
 

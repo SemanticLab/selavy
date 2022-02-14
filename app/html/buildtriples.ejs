@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" class="keep-it-100">
+<head>
+
+
+
+
+    <link rel="stylesheet" type="text/css" href="/html/css/bulma.min.css" >
+    <link rel="stylesheet" type="text/css" href="/html/css/all.min.css" >
+
+    
+    <script type="text/javascript" src="/html/js/vue.js"></script>
+    <script type="text/javascript" src="/html/js/Sortable.min.js"></script>
+    <script type="text/javascript" src="/html/js/vuedraggable.umd.min.js"></script>
+
+
+
+    <script type="application/javascript" src="/html/js/palette.js"></script>
+
+    <style>
+
+
+        .triple:hover{
+            background-color: lightblue;
+        }
+    	
+
+    </style>
+
+
+
+</head>
+<body class="container is-fluid keep-it-100">
+
+
+
+    <script>
+    	var docId = "<%- docId %>";
+    </script>
+
+
+
+
+    <div id="app">
+
+        <h1>Publish Triples</h1>
+
+
+        <hr>
+
+        <button class="button is-success" ref="publishall" @click="publishAllTriple">Publish All</button>
+        <button class="button is-warning" ref="unpublishall" @click="unpublishAllTriple">Unpublish All</button>
+
+        <hr>
+
+
+
+        <div v-if="doc && doc.triples">
+            
+
+
+            <div  v-for="blockId in Object.keys(doc.triples)">
+
+                Block #{{blockId}} ({{returnBlockQid(blockId)}})
+                
+
+                <div v-for="(triple,idx) in doc.triples[blockId]" class="triple" style="display: flex;">
+                    
+
+                    <div  style="flex:1">
+                        
+                        <span v-if="triple.status && triple.status=='published'">
+                            Published
+                            <button class="button is-small is-warning" @click="unpublishTriple(blockId,idx)">Unpublish</button>
+                            <span v-if="triple.undostatus">
+                                unpublish ERROR:<br><span>{{triple.undostatus}}</span>
+                            </span>
+                        </span>   
+                        <span v-else-if="triple.status && triple.status=='Working...'">
+                            Working...
+                        </span>   
+
+                        <span v-else>Unpublished
+
+                            <button class="button is-small is-success" @click="publishTriple(blockId,idx)">Publish</button>
+                            {{triple.status}}
+                        </span>
+                    </div>
+                    <div style="flex:3">
+
+                        <div>
+                            <code v-html="returnEntitiyName(triple.s.eId)"></code>
+                            <code>&lt;{{triple.p.label}}&gt;</code>
+                            <code v-html="returnEntitiyName(triple.o.eId)"></code>
+                            <div v-if="triple.context && triple.context.length>0" style="padding-left:3em">
+                                <div style="display: flex;" v-for="ctx in triple.context">
+                                <div style="flex:0;">Context</div>
+                                <div style="flex:1; font-size: 0.75em;"> 
+                                    <code>&lt;{{ctx.p.label}}&gt;</code>
+                                    <code v-html="returnEntitiyName(ctx.o.eId)"></code> 
+                                </div>
+                                </div>
+
+
+                            </div>
+                        </div>
+
+
+                    </div>
+
+                    
+
+                </div>
+
+
+
+                <hr>
+
+            </div>
+
+
+
+        </div>
+
+       
+
+	</div>
+
+
+
+<script >
+
+
+
+	var app = new Vue({
+	  el: '#app',
+	  data: {
+	    doc: {},
+
+        
+
+
+
+	  },
+      components: {
+        vuedraggable
+
+      },
+      computed: {
+
+    },
+
+
+	  created: function(){
+
+	  	let self = this
+
+		fetch(`/document/${docId}/work/data`)
+		  .then(response => response.json())
+		  .then(data => {
+		  	
+		  	self.doc = data		  
+
+            // self.filterBlocks()
+
+		  });	
+
+
+
+
+	  },
+
+
+
+
+      methods: { 
+
+
+
+            returnBlockQid: function(blockId){
+
+                for (let block in this.doc.blocks){
+
+                    if (this.doc.blocks[block].id == blockId){
+                        return this.doc.blocks[block].qid
+                    }
+
+                }
+
+                return '?'
+            },
+           
+
+
+            returnEntitiyName: function(id){
+
+                let e = this.doc.entities[id.toString()]
+
+                return `&lt;${e.nerName} (<a target="_blank" href="https://base.semlab.io/wiki/Item:${e.wiki.semlab}">${e.wiki.semlab}</a>)&gt;`
+
+
+
+            },
+
+
+            publishTriple: async function(blockId,tripleId){
+
+                this.doc.triples[blockId][tripleId].status = "Working..."
+                this.$forceUpdate();
+
+                const publishResponse = await fetch(`/document/${docId}/publishtriple/${blockId}/${tripleId}`);
+                const publishResult = await publishResponse.json();
+
+                this.doc.triples[blockId][tripleId] = publishResult
+
+                this.$forceUpdate();
+
+            },
+
+            publishAllTriple: async function(){
+
+                this.$refs.publishall.innerHTML="Working..."
+                for (let block in this.doc.triples){
+
+                    for (let triple in this.doc.triples[block]){
+
+                        if (!this.doc.triples[block][triple].status){
+                            let x = await this.publishTriple(block,triple)
+                        }else if (this.doc.triples[block][triple].status == 'unpublished'){
+                            let x = await this.publishTriple(block,triple)
+                        }
+
+                        console.log(block,triple)
+
+                        
+
+                    }
+
+                }
+
+                this.$refs.publishall.innerHTML="Publish All"
+
+
+
+            },
+
+            unpublishAllTriple: async function(){
+
+                this.$refs.unpublishall.innerHTML="Working..."
+                for (let block in this.doc.triples){
+                    for (let triple in this.doc.triples[block]){
+                        if (this.doc.triples[block][triple].status){
+                            let x = await this.unpublishTriple(block,triple)
+                        }
+                    }
+                }
+                this.$refs.unpublishall.innerHTML="Unpublish All"
+
+            },
+
+
+
+            unpublishTriple: async function(blockId,tripleId){
+
+
+                this.doc.triples[blockId][tripleId].status = "Working..."
+                this.$forceUpdate();
+
+                const publishResponse = await fetch(`/document/${docId}/unpublishtriple/${blockId}/${tripleId}`);
+                const publishResult = await publishResponse.json();
+
+                this.doc.triples[blockId][tripleId] = publishResult
+
+                this.$forceUpdate();
+
+
+            }            
+
+
+            
+
+
+           
+
+
+        },
+
+
+  })
+
+
+</script>
+
+</body>
+
+
+
+
+</html>
