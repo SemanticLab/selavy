@@ -843,9 +843,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 		// it might have the claim ,but does it have the claim for this value?
 		for (let claim of subjectData.claims[triple.p.id]){
 			if (claim.mainsnak.datavalue.value.id == objectItem){
-
 				hasClaim = true
-
 			}
 		}
 
@@ -1249,6 +1247,10 @@ exports.publishBlock = async function(doc,blockId, req){
 	if (blockText.length>=400){
 		blockText = blockText.substring(0,396) + '...'
 	}
+
+	// console.log('-----BLOCK TEXT------')
+	// console.log(blockText)
+	// return doc
 
 	let associatedEntites = []
 

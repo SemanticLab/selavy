@@ -146,7 +146,8 @@
 		  .then(response => response.json())
 		  .then(data => {
 		  	
-		  	self.doc = data		  
+		  	self.doc = data		
+
             self.findReplace = data.publish.replaceWith
             if (!self.findReplace){
                 self.findReplace=[]
@@ -311,6 +312,10 @@
 
         addLookForReplaceWith: function(){
 
+            if (this.replaceWith === null && this.lookFor !== null){
+                this.replaceWith = ''
+            }
+
 
             if (this.lookFor !== null && this.replaceWith !== null){
                 this.findReplace.push([this.lookFor,this.replaceWith])
@@ -336,7 +341,8 @@
 
 
             this.findReplace = newFindReplace
-
+            console.log(this.findReplace)
+            this.filterBlocks()
             this.filterBlocks()
 
             this.saveReplaceWith()
@@ -348,10 +354,14 @@
 
             this.blocks = []
             this.nextStep = true
-            for (let b of this.doc.blocks){
+            for (let b of JSON.parse(JSON.stringify(this.doc.blocks))){
 
                 for (let fr of this.findReplace){
-                    b.text = b.text.replaceAll(fr[0],fr[1])    
+                    let re = new RegExp(fr[0], "g");
+
+                    b.text = b.text.replace(re, fr[1]);
+
+                    // b.text = b.text.replaceAll(fr[0],fr[1])    
                 }
 
                 if (!b.publishStatus){
