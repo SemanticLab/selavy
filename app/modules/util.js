@@ -1261,10 +1261,12 @@ exports.publishBlock = async function(doc,blockId, req){
 
 	for (let b of doc.blocks[blockId].words){
 
-		if (b.eId){
+		if ('eId' in b && b.eId !== null){
 
 			let i = b.eId.toString()
 			if (doc.entities[i]){
+
+
 
 				if (doc.entities[i].wiki && doc.entities[i].wiki.semlab){
 					// console.log(b)
@@ -1273,17 +1275,23 @@ exports.publishBlock = async function(doc,blockId, req){
 					associatedEntites.push(doc.entities[i].wiki.semlab)
 				}
 
+			}else{
+
+				console.log('counnt find ',b)
 			}
 
 
 		}
 	}
 
-
+	console.log("associatedEntites before")
+	console.log(associatedEntites)
 	associatedEntites = associatedEntites.filter(function(elem, pos) {
 	    return associatedEntites.indexOf(elem) == pos;
 	})
 
+	console.log("associatedEntites after")
+	console.log(associatedEntites)
 
 
 
@@ -1390,7 +1398,7 @@ exports.publishBlock = async function(doc,blockId, req){
 	}
 
 
-
+	console.log(payload)
 
 
 	let generalConfig = {
