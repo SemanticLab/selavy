@@ -68,6 +68,12 @@
             border: solid 1px red;
             padding: 0;
         }
+
+        .word-ner:hover{
+            border: solid 1px red;
+            padding: 1;
+
+        }
         .entity-container{
             border: solid 1px #dadada;
             margin: 2px;
@@ -186,12 +192,12 @@
 
             <div>
 
-                <div class="block" v-for="block in activeBlocks">
+                <div class="block" v-for="block in activeBlocks" :key="'block'+keyCounter">
                     
 
 
 
-                    <template v-for="word in block.words">
+                    <template v-for="word in block.words" :key="'word'+keyCounter">
 
                         <span @click="publishedEntityClick(doc.entities[word.eId],block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner', 'word-ner-published']" :id="'b'+block.id+'-'+word.order" v-if="word.ner && doc.entities[word.eId] && doc.entities[word.eId].published" v-bind:style="{ 'background-color': returnInstanceOfColor(doc.entities[word.eId])}">                            
                             {{replaceEncodedChars(word.contextualText)+" "}}
@@ -454,7 +460,7 @@
                     </select>
 
                     <div :style="{'background-color':(removePaint) ? 'rgba(255, 255, 0, 0.15)' : '', 'font-size':(removePaint) ? '2em' : '1.25em'}"  class="entity-container paint-possible">
-                        <span class="entity-container-label" @click="toggleRemovePaint()"><i class="fas fa-ban" style="padding-right: 0.25em"></i>Remove Paint</span>
+                        <span class="entity-container-label" @click="toggleRemovePaint()"><i class="fas fa-ban" style="padding-right: 0.25em"></i>Remove Paint or Break Up</span>
                    </div>
 
                 </div>
@@ -636,6 +642,7 @@
         activeContextProperty: null,
         activeContextEntity: null,
 
+        keyCounter: 0,
 
         loadEntitiesInput:"",
 
@@ -706,7 +713,7 @@
 		  	
 		  	self.doc = data
 		  	console.log(self.doc)
-
+            console.log(JSON.parse(JSON.stringify(self.doc)))
             console.log(self.doc.entities)
             self.blockTriples = self.doc.triples
             if (!self.blockTriples){
@@ -911,6 +918,7 @@
 
         loadEntitiesFromWikibase: async function(){
 
+            console.log("-------this.doc",JSON.parse(JSON.stringify(this.doc)))
 
             toadd = []
             for (let qid of this.loadEntitiesInput.split('\n')){
@@ -973,6 +981,14 @@
                     eCounter++
                     pCounter++
 
+                    //make sure the eId is unique
+                    while (eCounter in this.doc.entities){
+                        eCounter++
+                    }
+
+
+ 
+
                     if (alreadyQs.indexOf(qid)>-1){
                         alert(`${label} (${qid}) is already in the pallet`)
                         continue
@@ -993,6 +1009,10 @@
 
 
                     console.log('alreadyQs',alreadyQs,eCounter,pCounter)
+
+
+                    // make sure that eCounter is unique
+
 
                     let newEnt = {
                         "order": 61,
@@ -1048,7 +1068,10 @@
             
             alert(added.join(',') + ' Added to the pallet.')
 
+            console.log("-------this.doc",JSON.parse(JSON.stringify(this.doc)))
+            this.buildInstaceOfColorLookup()
 
+            this.keyCounter++
 
         },
 
@@ -1216,6 +1239,69 @@
 
         },
 
+        splitWord:function(block,word){
+
+            for (let b of this.doc.blocks){
+
+                if (b.id === block.id){
+
+                    let newWords = []
+
+                    console.log(b,word)
+                    let index = 0
+                    for (let w of b.words){
+
+                        if (w.order < word.order){
+                            console.log('Before',w)
+                            newWords.push(w)
+                            index++
+                        }else if (w.order == word.order){
+                            console.log('its here',w)
+
+                            let text = w.orginalText
+
+
+                            let newSeq = text.split(' ')
+                            // split it up and loop throguh the new words, add them into the words, increase index
+                            for (let nW of newSeq){
+
+                                console.log('nW ->',nW)
+                                newWords.push({
+                                    ner: false,
+                                    order: index,
+                                    orginalText: nW,
+                                    text: nW,                                  
+                                })
+                                index++
+                            }
+
+
+                        }else if (w.order > word.order){
+                            console.log('after',w)
+                            newWords.push(w)
+                            index++
+                        }
+
+                        
+                        
+
+                    }
+                    b.words = newWords
+                    // this.keyCounter++
+                    this.filterBlocks()
+                    console.log(b,word)
+
+                }
+
+
+            }
+
+
+
+
+        },
+
+
         publishEntity: function(block,word){
             console.log('publishEntity',this.activePaintEntity)
 
@@ -1239,6 +1325,8 @@
 
                 // it might not be an entitiy
                 if (!word.eId){
+                    // they hit a non-entity assigned word with da axe, break it up
+                    this.splitWord(block,word)
                     return false
                 }
                 let data = this.gatherEntitiyToBlockInfo(word.eId)
@@ -1263,6 +1351,7 @@
 
 
             }
+            // this.keyCounter++
             console.log(block,word)
 
         },
@@ -1747,7 +1836,9 @@
             this.publishedEntityInfo = null
             this.removePaint = false
 
-            if (this.activePaintEntity && this.activePaintEntity == entity.eId){
+            console.log(this.activePaintEntity, this.activePaintEntity)
+
+            if (this.activePaintEntity !== null && this.activePaintEntity == entity.eId){
                 this.stopPaint()
                 return 
             }

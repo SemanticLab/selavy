@@ -719,6 +719,13 @@ app.get('/document/:docId/instanceof/start', async function (req, res) {
 			continue
 		}
 
+		// if the key does not exist at all, they we are ignoring it
+		if ( !("isDiscarded" in e) ){
+			discaredLookup[e.nerName] =true
+			continue			
+		}
+
+
 		// does it have a mid
 		if (e.mid){
 			// does it exist arlready?
