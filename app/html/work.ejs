@@ -1325,8 +1325,11 @@
 
                 // it might not be an entitiy
                 if (!word.eId){
+
                     // they hit a non-entity assigned word with da axe, break it up
-                    this.splitWord(block,word)
+                    if (this.removePaint){
+                        this.splitWord(block,word)
+                    }
                     return false
                 }
                 let data = this.gatherEntitiyToBlockInfo(word.eId)
