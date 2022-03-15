@@ -41,20 +41,31 @@
         <h1>Publish Blocks</h1>
 
         <hr>
-        <details>
-            <summary style="cursor: pointer;">Text clean up</summary>
-            <p>Add in the values you want to be converted in the block text. The first field is for what to look for and the second is what to replace it with.</p>
 
-            <div v-for="t in findReplace" :key="t[0]">
+            <div style="display:flex;">
+                <div style="flex:1; padding: 1em 1em 1em 0;">
+                    <p>Clean up text</p>
+                    <p>Add in the values you want to be converted in the block text. The first field is for what to look for and the second is what to replace it with.</p>
+
+                    <div v-for="t in findReplace" :key="t[0]">
+                        
+                    <code>{{t[0]}} -&gt; {{t[1]}}</code><button @click="removeLookForReplaceWith(t)">Remove</button>
+
+
+                    </div>
+
+                    <input v-model="lookFor" placeholder="Look For" value=""> -&gt; <input v-model="replaceWith" value="" placeholder="Replace With"> <button @click="addLookForReplaceWith">Add</button>
                     
-                <code>{{t[0]}} -&gt; {{t[1]}}</code><button @click="removeLookForReplaceWith(t)">Remove</button>
 
+                </div>
+                <div style="flex:1; padding: 1em 0 1em 1em; border-left: solid 1px lightgrey;">
+                    
+                    <p>Load full block text to S3</p>
+                    <button @click="loadToS3">Load</button>
+                    <div ref="loadToS3Status"></div>
+                </div>
 
             </div>
-
-            <input v-model="lookFor" placeholder="Look For" value=""> -&gt; <input v-model="replaceWith" value="" placeholder="Replace With"> <button @click="addLookForReplaceWith">Add</button>
-
-        </details>
 
         <hr>
         <div>Select which project(s) these entities will belong to:</div>
@@ -184,6 +195,17 @@
 
   methods: { 
 
+
+        loadToS3: async function(){
+
+            this.$refs.loadToS3Status.innerHTML = "Loading, please wait..."
+            await fetch(`/document/${docId}/uploadtext/`)
+            .then(response => response.json())
+            .then(data => {
+                this.$refs.loadToS3Status.innerHTML = data.toString()
+            });                       
+
+        },
 
         projectSelect: function(event){
 

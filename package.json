@@ -25,6 +25,7 @@
     "express": "^4.17.1",
     "express-fileupload": "^1.2.0",
     "express-session": "^1.17.1",
+    "@aws-sdk/client-s3": "^3.32.0",
     "glob": "^7.1.6",
     "got": "^11.8.1",
     "image-size": "^0.9.3",

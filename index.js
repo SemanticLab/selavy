@@ -9,8 +9,25 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const sizeOf = require('image-size');
 
+
+const utilsys = require("util");
+const readFile = utilsys.promisify(fs.readFile);
+
+
 const language = require('@google-cloud/language');
 const client = new language.LanguageServiceClient();
+
+
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
+const {fromIni} = require("@aws-sdk/credential-provider-ini");
+
+const s3 = new S3Client({ 
+	credentials: fromIni({profile: 'semlab'}),
+	region: 'us-east-1'
+});
+
+
 
 
 
@@ -1122,6 +1139,88 @@ app.get('/clist',  function (req, res) {
 	
 })
 
+
+
+
+app.get('/document/:docId/uploadtext',  async function (req, res) {
+
+	let docId = req.params.docId
+	var doc = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.meta.json', 'utf8'));
+	let errors = []
+	for (let block of doc.blocks){
+
+		let blockText = block.text
+
+
+		if (doc.publish && doc.publish.replaceWith){
+			for (let patterns of doc.publish.replaceWith){
+
+				let lookFor = patterns[0]
+				let replaceWith = patterns[1]
+
+				let replace = lookFor;
+				let re = new RegExp(replace,"g");
+
+				blockText = blockText.replace(re, replaceWith);
+
+			}
+		}
+
+		try{
+
+			fs.writeFileSync('/tmp_data/'+docId+'_block_text.txt', blockText);
+
+			let input = {
+			   Bucket: 'semlab',
+			   Key: `texts/${doc.publish.qid}/${block.id}.txt`,
+			   Body: await readFile('/tmp_data/'+docId+'_block_text.txt'),
+			   ContentType: 'text/plain'
+			}
+			const command = new PutObjectCommand(input);
+			const response = await s3.send(command);
+
+
+		}catch (error) {
+			console.log(error)
+			errors.push('error - ' + error.toString())
+
+		}
+
+
+		console.log(blockText)
+
+
+	}
+
+
+	if (errors.length==0){
+		errors.push('Sucessful')
+	}
+	
+
+
+	// console.log(response)
+
+	res.json(errors);
+})
+
+
+// async function test() {
+// 	console.log("yeet")
+// 	let ffff = await readFile("LICENSE")
+// 	console.log(ffff)
+// 	s3.send(new PutObjectCommand({
+
+// 	   Bucket: 'semlab',
+// 	   Key: 'LICENSE',
+// 	   Body: ffff
+// 	}));
+
+
+// }
+
+
+// test()
 
 
 

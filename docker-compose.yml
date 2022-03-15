@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/app
       - ./tmp:/tmp_data
+      - ~/.aws/:/root/.aws:ro
     working_dir: /app
     restart: always
     depends_on:
