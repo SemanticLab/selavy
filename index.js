@@ -1168,13 +1168,13 @@ app.get('/document/:docId/uploadtext',  async function (req, res) {
 
 		try{
 
-			fs.writeFileSync('/tmp_data/'+docId+'_block_text.txt', blockText);
+			fs.writeFileSync('/tmp_data/'+docId+'_block_text.txt', blockText, 'utf8');
 
 			let input = {
 			   Bucket: 'semlab',
 			   Key: `texts/${doc.publish.qid}/${block.id}.txt`,
-			   Body: await readFile('/tmp_data/'+docId+'_block_text.txt'),
-			   ContentType: 'text/plain'
+			   Body: await readFile('/tmp_data/'+docId+'_block_text.txt', 'utf8'),
+			   ContentType: 'text/plain;charset=utf-8'
 			}
 			const command = new PutObjectCommand(input);
 			const response = await s3.send(command);
