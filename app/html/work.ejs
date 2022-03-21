@@ -1258,7 +1258,15 @@
                         }else if (w.order == word.order){
                             console.log('its here',w)
 
-                            let text = w.orginalText
+                            let text = null
+                            if (w.orginalText){
+                                text = w.orginalText
+                            }else if(w.text){
+                                text = w.text
+                            }else if (w.contextualText){
+                                text = w.text
+                            }
+                            
 
 
                             let newSeq = text.split(' ')
@@ -1834,6 +1842,8 @@
 
         startPaint: function(entity){
 
+            this.clearEmojiCursor()
+            
             document.body.classList.add('cursor-paint')
             
             this.publishedEntityInfo = null
