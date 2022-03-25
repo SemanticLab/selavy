@@ -1267,7 +1267,11 @@
                                 text = w.text
                             }
                             
-
+                            // if its a weird string like this
+                            // Nina_Kaiden/Eleanor_Howard___RUDER_&_FINN_INCORPORATED___130_East_59th_Street
+                            // remove the _ and / turn it into spaces
+                            text = text.replaceAll('_',' ')
+                            text = text.replaceAll('/',' ')
 
                             let newSeq = text.split(' ')
                             // split it up and loop throguh the new words, add them into the words, increase index
