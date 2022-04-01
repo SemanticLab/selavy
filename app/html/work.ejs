@@ -1335,14 +1335,22 @@
 
             }else{
 
+                console.log("word",word)
+
+
+                // they hit a non-entity assigned word with da axe, break it up
+                if (this.removePaint){
+                    this.splitWord(block,word)
+                    return false
+
+                }
+
+
                 // it might not be an entitiy
                 if (!word.eId){
 
-                    // they hit a non-entity assigned word with da axe, break it up
-                    if (this.removePaint){
-                        this.splitWord(block,word)
-                    }
                     return false
+                    
                 }
                 let data = this.gatherEntitiyToBlockInfo(word.eId)
 
