@@ -1002,7 +1002,11 @@ app.get('/docstatus',  function (req, res) {
 
 		  	var doc = JSON.parse(fs.readFileSync(f, 'utf8'));
 
-		  	if (doc.currentStage == 'entities' || doc.currentStage == 'work'){
+		  	if (doc.currentStage == 'entities' || 
+		  			doc.currentStage == 'work' || 
+		  			doc.currentStage == 'buildblocks' || 
+		  			doc.currentStage == 'buildtriples' 
+		  			){
 			  	data.push({
 			  		user: doc.createdBy,
 			  		currentStage: doc.currentStage,
@@ -1014,7 +1018,7 @@ app.get('/docstatus',  function (req, res) {
 
 		  }
 
-			data = data.sort((a,b) => (a.timestampStart > b.timestampStart) ? 1 : ((b.timestampStart > a.timestampStart) ? -1 : 0))
+			data = data.sort((a,b) => (a.timestampStart < b.timestampStart) ? 1 : ((b.timestampStart < a.timestampStart) ? -1 : 0))
 
 			res.json(data)
 
@@ -1036,24 +1040,57 @@ app.get('/docstatus',  function (req, res) {
 
 app.get('/document/:docId/entities',  function (req, res) {
 	docId = req.params.docId
+
+	try{
+		var d = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.index.json', 'utf8'));
+		d.currentStage = 'entities'
+		fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(d,null,2));
+	}catch{
+		console.error("Error writing index file")
+	}
+	
+
 	res.render('entities',{docId:docId})
 })
 
 app.get('/document/:docId/work',  function (req, res) {
 	docId = req.params.docId
-	console.log(req.session.wbus)
+
+	try{
+		var d = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.index.json', 'utf8'));
+		d.currentStage = 'work'
+		fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(d,null,2));
+	}catch{
+		console.error("Error writing index file")
+	}
+
+
 	res.render('work',{docId:docId})
 })
 
 app.get('/document/:docId/buildblocks',  function (req, res) {
 	docId = req.params.docId
-	console.log(req.session.wbus)
+	try{
+		var d = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.index.json', 'utf8'));
+		d.currentStage = 'buildblocks'
+		fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(d,null,2));
+	}catch{
+		console.error("Error writing index file")
+	}
+
 	res.render('buildblocks',{docId:docId})
 })
 
 app.get('/document/:docId/buildtriples',  function (req, res) {
 	docId = req.params.docId
-	console.log(req.session.wbus)
+	try{
+		var d = JSON.parse(fs.readFileSync('/tmp_data/'+docId + '.index.json', 'utf8'));
+		d.currentStage = 'buildtriples'
+		fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(d,null,2));
+	}catch{
+		console.error("Error writing index file")
+	}
+
 	res.render('buildtriples',{docId:docId})
 })
 
