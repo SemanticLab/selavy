@@ -687,8 +687,6 @@ exports.publishEntity = async function(req, res){
 
 exports.unpublishTriple = async function(blockId,tripleId, doc, req){
 
-	req.session.wbus = "mattselavy"
-	req.session.wbpw = "mattselavy1234"
 
 	let triple = doc.triples[blockId][tripleId]
 	let subjectItem, objectItem
@@ -820,8 +818,6 @@ exports.unpublishTriple = async function(blockId,tripleId, doc, req){
 exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
-	req.session.wbus = "mattselavy"
-	req.session.wbpw = "mattselavy1234"
 
 	let triple = doc.triples[blockId][tripleId]
 	let subjectItem, objectItem
@@ -1138,7 +1134,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 				}
 
 				claimID = r.claim.id
-				
+
 				doc.triples[blockId][tripleId].undo.push({
 					'type':'DELETE_CLAIM',
 					'value': r.claim.id,
