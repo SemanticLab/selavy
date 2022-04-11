@@ -687,13 +687,26 @@ exports.publishEntity = async function(req, res){
 
 exports.unpublishTriple = async function(blockId,tripleId, doc, req){
 
+	req.session.wbus = "mattselavy"
+	req.session.wbpw = "mattselavy1234"
 
 	let triple = doc.triples[blockId][tripleId]
 	let subjectItem, objectItem
 
 	try{
 		subjectItem = doc.entities[triple.s.eId.toString()].wiki.semlab
-		objectItem = doc.entities[triple.o.eId.toString()].wiki.semlab
+
+		if (triple.p.type=='WikibaseItem'){
+			objectItem = doc.entities[triple.o.eId.toString()].wiki.semlab	
+		}else if (triple.p.type=='Time'){
+			objectItem = triple.o
+		}else if (triple.p.type=='Monolingualtext'){
+			objectItem = { text: triple.o, language: 'en' } 
+		}else if (triple.p.type=='String'){
+			objectItem = triple.o
+		}
+		
+
 
 	}catch (error) {
 		console.log(error)
@@ -807,12 +820,28 @@ exports.unpublishTriple = async function(blockId,tripleId, doc, req){
 exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
+	req.session.wbus = "mattselavy"
+	req.session.wbpw = "mattselavy1234"
+
 	let triple = doc.triples[blockId][tripleId]
 	let subjectItem, objectItem
 
 	try{
+
 		subjectItem = doc.entities[triple.s.eId.toString()].wiki.semlab
-		objectItem = doc.entities[triple.o.eId.toString()].wiki.semlab
+
+		if (triple.p.type=='WikibaseItem'){
+			objectItem = doc.entities[triple.o.eId.toString()].wiki.semlab	
+		}else if (triple.p.type=='Time'){
+			objectItem = triple.o
+		}else if (triple.p.type=='Monolingualtext'){
+			objectItem = { text: triple.o, language: 'en' } 
+		}else if (triple.p.type=='String'){
+			objectItem = triple.o
+		}
+		
+
+
 
 	}catch (error) {
 		console.log(error)
@@ -870,7 +899,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 			
 
 			// is the right claim for our value?
-			console.log(claim.mainsnak.datavalue)
+			console.log('claim.mainsnak.datavalue',claim.mainsnak.datavalue)
 
 			if (claim.mainsnak.datavalue.value.id == objectItem){
 
@@ -899,7 +928,28 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 				for (let ctx of doc.triples[blockId][tripleId].context){
 
 					let ctxP = ctx.p.id
-					let ctxO = doc.entities[ctx.o.eId.toString()].wiki.semlab
+					console.log(ctx.p)
+					let ctxO
+
+					if (ctx.p.type=='WikibaseItem'){
+						ctxO = doc.entities[ctx.o.eId.toString()].wiki.semlab	
+					}else if (ctx.p.type=='Time'){
+						ctxO = ctx.o
+					}else if (ctx.p.type=='Monolingualtext'){
+						ctxO = { text: ctx.o, language: 'en' } 
+					}else if (ctx.p.type=='String'){
+						ctxO = ctx.o
+					}
+					
+					
+
+
+
+
+
+					 
+
+
 
 					console.log("Looking for qualfier:",ctxP,ctxO)
 					let addQualifer = true
@@ -908,10 +958,33 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 						if (claim.qualifiers[ctxP]){			
 							for (let qval of claim.qualifiers[ctxP]){
+								console.log("QVAL----------")
 								console.log(qval)
-								if (qval.datavalue.value.id == ctxO){
-									addQualifer = false
+
+								
+
+								if (ctx.p.type=='WikibaseItem'){
+									if (qval.datavalue.value.id == ctxO){
+										addQualifer = false
+									}									
+
+								}else if (ctx.p.type=='Time'){
+									if (qval.datavalue.value.time.indexOf(ctxO)>-1){
+										addQualifer = false
+									}
+								}else if (ctx.p.type=='Monolingualtext'){
+									if (qval.datavalue.value.text == ctxO.text){
+										addQualifer = false
+									}
+								}else if (ctx.p.type=='String'){
+									if (qval.datavalue.value == ctxO){
+										addQualifer = false
+									}
 								}
+
+
+
+
 							}
 						}
 					}else{
@@ -1043,6 +1116,13 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 		console.log(triple.p.id,'does not exist')
 		let claimID = null
 
+		console.log("=======")
+		console.log({
+			  id: subjectItem,
+			  property: triple.p.id,
+			  value: objectItem
+			})
+
 		try{
 			const r = await wbEdit.claim.create({
 			  id: subjectItem,
@@ -1057,6 +1137,8 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 					doc.triples[blockId][tripleId].undo = []
 				}
 
+				claimID = r.claim.id
+				
 				doc.triples[blockId][tripleId].undo.push({
 					'type':'DELETE_CLAIM',
 					'value': r.claim.id,
@@ -1064,7 +1146,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 				})
 
 				doc.triples[blockId][tripleId].status = "published"
-				claimID = r.claim.id
+				
 
 			}else{
 
@@ -1132,7 +1214,20 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 			for (let ctx of doc.triples[blockId][tripleId].context){
 
 				let ctxP = ctx.p.id
-				let ctxO = doc.entities[ctx.o.eId.toString()].wiki.semlab
+
+
+				let ctxO
+				if (ctx.p.type=='WikibaseItem'){
+					ctxO = doc.entities[ctx.o.eId.toString()].wiki.semlab	
+				}else if (ctx.p.type=='Time'){
+					ctxO = ctx.o
+				}else if (ctx.p.type=='Monolingualtext'){
+					ctxO = { text: ctx.o, language: 'en' } 
+				}else if (ctx.p.type=='String'){
+					ctxO = ctx.o
+				}
+
+
 
 				const guid = claimID
 

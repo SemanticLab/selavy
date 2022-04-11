@@ -91,13 +91,18 @@
                         <div>
                             <code v-html="returnEntitiyName(triple.s.eId)"></code>
                             <code>&lt;{{triple.p.label}}&gt;</code>
-                            <code v-html="returnEntitiyName(triple.o.eId)"></code>
+                            
+                            <code v-if="triple.p.type=='WikibaseItem'" v-html="returnEntitiyName(triple.o.eId)"></code>
+                            <code v-else>"{{triple.o}}"</code>
+
                             <div v-if="triple.context && triple.context.length>0" style="padding-left:3em">
                                 <div style="display: flex;" v-for="ctx in triple.context">
                                 <div style="flex:0;">Context</div>
                                 <div style="flex:1; font-size: 0.75em;"> 
                                     <code>&lt;{{ctx.p.label}}&gt;</code>
-                                    <code v-html="returnEntitiyName(ctx.o.eId)"></code> 
+
+                                    <code v-if="ctx.p.type=='WikibaseItem'" v-html="returnEntitiyName(ctx.o.eId)"></code> 
+                                    <code v-else>"{{ctx.o}}"</code>
                                 </div>
                                 </div>
 

@@ -164,6 +164,33 @@
         }
 
 
+        .property-container{
+            position: relative;
+        }
+        .property-type{
+            position: absolute;
+            right: 0;
+            top: 0;
+            font-size: 0.75em;
+            margin-top: 0.25em;            
+            border-radius: 7px;
+            color: white;
+            z-index: 100; 
+            opacity: 0.25;
+            min-width: 24px;
+            text-align: center;
+        }
+        .property-type-wb{
+         background-color: #0000ff59;
+        }
+        .property-type-text{
+            background-color: #56b630b5;  
+        }
+        .property-type-date{
+            background-color: #ff000059;     
+        }
+
+
     </style>
 
 
@@ -218,17 +245,25 @@
 
                     <div class="triple-block-display" :style="{'display': (blockTriples[block.id] && blockTriples[block.id].length >0 ) ? 'block' : 'none'}">
                         <div v-for="(triple,index) in blockTriples[block.id]">
-                            <button @click="removeBlockTriple(block.id,index,$event)" class="button is-small">x</button>
-                            <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.s.wiki.semlab">{{triple.s.nerName}}</a>&gt;</span>
-                            <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.p.id">{{triple.p.label}}</a>&gt;</span>
-                            <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.o.wiki.semlab">{{triple.o.nerName}}</a>&gt;</span>
-                            <button @click="addContext(block.id, index)" class="button is-small">ctx</button>
-                            <span v-if="triple.context.length>0">
-                                <span v-for="ctx in triple.context">
-                                    <span>&lt;{{ctx.p.label}}&gt;</span>
-                                    <span>&lt;{{ctx.o.nerName}}&gt;</span>
+
+                                <button @click="removeBlockTriple(block.id,index,$event)" class="button is-small">x</button>
+                                <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.s.wiki.semlab">{{triple.s.nerName}}</a>&gt;</span>
+                                <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.p.id">{{triple.p.label}}</a>&gt;</span>
+                                <span v-if="triple.p.type=='WikibaseItem'">&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.o.wiki.semlab">{{triple.o.nerName}}</a>&gt;</span>
+                                <span v-else>"{{triple.o}}"</span>
+                                <button @click="addContext(block.id, index)" class="button is-small">ctx</button>
+                                <span v-if="triple.context.length>0">
+                                    <span v-for="ctx in triple.context">
+                                        <span>&lt;{{ctx.p.label}}&gt;</span>
+
+                                        <span v-if="ctx.p.type=='WikibaseItem'">&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+ctx.o.wiki.semlab">{{ctx.o.nerName}}</a>&gt;</span>
+                                        <span v-else>"{{ctx.o}}"</span>
+
+
+
+                                    </span>
                                 </span>
-                            </span>
+
                         </div>
                     </div>
                 </div>
@@ -309,6 +344,11 @@
 
                     </div>
 
+                    <div v-if="this.activePredicate && this.activePredicate.type != 'WikibaseItem'">
+                        Adding Literal Value, seletect text will appear here, edit and submit. Click clear to cancel.<br>
+                        <input class="input" type="text" v-model="currentTextSelection">
+                        <buton style="margin-top:1em;" class="button is-small is-success" @click="addLiteralTriple(false)">add literal</buton>
+                    </div>
 
                     <buton style="margin-top:1em;" class="button is-small" @click="clearActiveTriple">clear</buton>
                 </div>
@@ -321,6 +361,13 @@
                         <span v-if="activeContextProperty" style="padding-right: 1em; font-weight: bold">&lt;{{activeContextProperty}}&gt;</span>
                         <span v-if="activeContextEntity" style="padding-right: 1em; font-weight: bold">&lt;{{activeContextEntity}}&gt;</span>
 
+                    </div>
+
+
+                    <div v-if="this.activeContext.property && this.activeContext.property.type != 'WikibaseItem'">
+                        Adding Literal Value, seletect text will appear here, edit and submit. Click clear to cancel.<br>
+                        <input class="input" type="text" v-model="currentTextSelection">
+                        <buton style="margin-top:1em;" class="button is-small is-success" @click="addLiteralTriple(true)">add literal</buton>
                     </div>
 
 
@@ -337,9 +384,11 @@
                 <div style="display: flex;">
                     <div style="flex:1">
                         <vuedraggable v-model="possiblePropertiesLeft" group="people" @start="drag=true" @end="drag=false">
-                           <div @click="setActivePredicate(element)" :title="element.id + '-' + element.desc" class="entity-container" v-for="element in possiblePropertiesLeft" :key="element">
+                           <div @click="setActivePredicate(element)" :title="element.id + '-' + element.desc" class="entity-container property-container" v-for="element in possiblePropertiesLeft" :key="element">
                             <span>{{element.label}}</span>
-
+                            <div v-if="element.type=='WikibaseItem'" title="Wikibase Item" class="property-type property-type-wb">WB</div>
+                            <div v-if="element.type=='Monolingualtext' || element.type=='String'" class="property-type property-type-text" title="Monolingual Text or String">TX</div> 
+                            <div v-if="element.type=='Time'" title="Wikibase Item" class="property-type property-type-date">DT</div>                                                       
                             <!-- <button slot="header" >Add</button> -->
                            </div>
                         </vuedraggable>                
@@ -350,6 +399,11 @@
                            <div @click="setActivePredicate(element)" :title="element.id + '-' + element.desc" class="entity-container" v-for="element in possiblePropertiesRight" :key="element">
                             
                             <span>{{element.label}}</span>
+                            <div v-if="element.type=='WikibaseItem'" title="Wikibase Item" class="property-type property-type-wb">WB</div>
+                            <div v-if="element.type=='Monolingualtext' || element.type=='String'" class="property-type property-type-text" title="Monolingual Text or String">TX</div> 
+                            <div v-if="element.type=='Time'" title="Wikibase Item" class="property-type property-type-date">DT</div>          
+
+
                             <!-- <span @click="loadEntity(element, $event)" class="icon is-small"><i class="fas fa-cog" aria-hidden="true"></i></span> -->
                             <!-- <button slot="header" >Add</button> -->
                            </div>
@@ -611,6 +665,8 @@
         possiblePropertiesLeft: [],     
         tripleEntitiesPalette: [],
 
+        currentTextSelection: '',
+
         docQId: null,
 
 
@@ -631,6 +687,7 @@
         activeSubject: null,
         activePredicate: null,
         activeObject: null,
+        activeBlock: null,
 
         blockTriples: {},
 
@@ -770,12 +827,64 @@
 
           }, 1000)
 
+
+
+
+        document.addEventListener('selectionchange', () => {
+            if (document.getSelection() && document.getSelection().baseNode && document.getSelection().baseNode.parentNode && document.getSelection().baseNode.parentNode.parentNode && document.getSelection().baseNode.parentNode.parentNode.classList.contains('block')){
+                if (document.getSelection().toString().trim() != '')
+                this.currentTextSelection = document.getSelection().toString().trim()
+
+            }
+        });
+
+
+
 	  },
 
 
 
 
   methods: {
+
+
+        addLiteralTriple: function(ctx){
+
+
+            if (!ctx){
+
+                if (this.activeSubject && this.activePredicate && this.activeBlock && this.currentTextSelection && this.currentTextSelection != ''){
+
+                    console.log(this.activeSubject , this.activePredicate , this.activeBlock, this.currentTextSelection)
+
+                    if (!this.blockTriples[this.activeBlock.id]){
+                        this.blockTriples[this.activeBlock.id] = []
+                    }
+                    this.blockTriples[this.activeBlock.id].push({s:this.activeSubject,p:this.activePredicate,o:this.currentTextSelection,context:[]})
+
+                    this.clearActiveTriple()
+
+                }
+
+
+            }else{
+
+
+                    console.log(this.activeContext.blockId)
+                    console.log(this.activeContext.index)
+                    console.log(this.activeContext.property)
+                    console.log(this.currentTextSelection)
+
+                    this.blockTriples[this.activeContext.blockId][this.activeContext.index].context.push({p:this.activeContext.property,o:this.currentTextSelection})
+                    this.activeContext = null
+                    this.needsSaving = true                    
+                    this.clearEmojiCursor()
+
+            }
+
+
+
+        },
 
         replaceEncodedChars: function(text){
 
@@ -1109,7 +1218,7 @@
                 self.plist = data
                 
                 console.log(data)
-                self.possibleProperties = data.filter((f)=>{return f.type == "WikibaseItem"})
+                self.possibleProperties = data.filter((f)=>{return f.type == "WikibaseItem" || f.type == "Monolingualtext" || f.type == "String" || f.type == "Time" })
                 
                 self.possiblePropertiesLeft=[]
                 self.possiblePropertiesRight=[]
@@ -1422,7 +1531,7 @@
 
         setActivePredicate: function(property){
 
-
+            console.log('property',property)
             if (this.activeContext != null){
                 this.activeContext.property = property
                 this.activeContextProperty = property.label
@@ -1498,7 +1607,7 @@
 
                 if (this.activeSubject==null){
                     this.activeSubject = entity
-
+                    this.activeBlock = block
                     document.body.classList.add('cursor-active-predicate')
 
 
@@ -1822,8 +1931,10 @@
 
         removeBlockTriple: function(blockId, index, event){
 
+            console.log(event.target.parentElement)
             this.blockTriples[blockId].splice(index, 1)
-            event.target.parentElement.style.display='none'
+            console.log(this.blockTriples)
+            // event.target.parentElement.style.display='none'
             this.needsSaving=true
         },
 
@@ -1838,6 +1949,7 @@
             this.activeSubject=null
             this.activePredicate=null
             this.activeObject=null
+            this.activeBlock=null
             this.clearEmojiCursor()
         },
 
