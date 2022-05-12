@@ -71,6 +71,8 @@
 
     <script>
 
+
+
     	var regexes = []
 
     	function removeRegex(){
@@ -94,6 +96,9 @@
 	    		})
 
     		})
+
+
+
 
 			document.getElementById("text").value = text
 
@@ -149,7 +154,6 @@
 
     	function textFilter(pattern, replace){
 
-
     		// get the values that should be exluded if there
     		var excludeValues = []
 			Array.prototype.forEach.call(document.getElementsByClassName("add-regex-confirm"), function(el) {
@@ -198,6 +202,11 @@
 
 
     		}
+
+
+    		// some special chars can be used 
+    		text = text.replaceAll('\\n','\n')
+
 
 
 
