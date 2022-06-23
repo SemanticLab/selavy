@@ -244,7 +244,12 @@
 
 
                     <div class="triple-block-display" :style="{'display': (blockTriples[block.id] && blockTriples[block.id].length >0 ) ? 'block' : 'none'}">
+
+
                         <div v-for="(triple,index) in blockTriples[block.id]">
+
+
+
 
                                 <button @click="removeBlockTriple(block.id,index,$event)" class="button is-small">x</button>
                                 <span>&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+triple.s.wiki.semlab">{{triple.s.nerName}}</a>&gt;</span>
@@ -254,10 +259,20 @@
                                 <button @click="addContext(block.id, index)" class="button is-small">ctx</button>
                                 <span v-if="triple.context.length>0">
                                     <span v-for="ctx in triple.context">
-                                        <span>&lt;{{ctx.p.label}}&gt;</span>
 
-                                        <span v-if="ctx.p.type=='WikibaseItem'">&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+ctx.o.wiki.semlab">{{ctx.o.nerName}}</a>&gt;</span>
-                                        <span v-else>"{{ctx.o}}"</span>
+                                        <template v-if="ctx.p">
+
+                                            <span>&lt;{{ctx.p.label}}&gt;</span>
+
+                                            <span v-if="ctx.p.type=='WikibaseItem'">&lt;<a target="_blank" :href="'http://base.semlab.io/entity/'+ctx.o.wiki.semlab">{{ctx.o.nerName}}</a>&gt;</span>
+                                            <span v-else>"{{ctx.o}}"</span>
+
+
+                                        </template>
+                                        <template v-else>
+
+                                            <span style="color:red; font-weight:bold">This context statment is broken, please remove this triple and re-add it.</span>
+                                        </template>
 
 
 
