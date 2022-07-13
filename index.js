@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload');
 const tika    = require('./app/modules/tika')
 const util    = require('./app/modules/util')
+const config  = require('./config').config
 const glob = require("glob")
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
@@ -26,14 +27,6 @@ const s3 = new S3Client({
 	credentials: fromIni({profile: 'semlab'}),
 	region: 'us-east-1'
 });
-
-
-
-
-
-
-
-
 
 
 const app = express()
@@ -77,7 +70,7 @@ app.post('/', function(req, res) {
 
 	// try loging into wb
 	let generalConfig = {
-	  instance: 'http://base.semlab.io/',
+	  instance: config.wikibaseUrl,
 	  credentials: {
 	    username: req.body.username,
 	    password: req.body.password
@@ -87,7 +80,7 @@ app.post('/', function(req, res) {
 	let wbEdit = require('wikibase-edit')(generalConfig)
 
 		wbEdit.alias.add({
-			id: 'Q21191',
+			id: config.wikibaseTestItem,
 			language: 'fr',
 			value: 'test'
 		}).then(()=>{
@@ -692,17 +685,6 @@ app.get('/document/:docId/entity/start', async function (req, res) {
 
 
 
-
-
-
-	// fs.writeFileSync('/tmp_data/'+docId+'.meta.json', JSON.stringify(doc,null,2));
-
-
-	// doc_index.nerStatus.done = true
-	// fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(doc_index,null,2));
-
-
-
 })
 
 
@@ -859,42 +841,12 @@ app.get('/document/:docId/instanceof/start', async function (req, res) {
 						console.log("errror shit")
 					}
 				}
-			//}
 
-
-			// if (w.eId == 0){
-
-			// 	console.log('Set to eId 0 ---------')
-			// 	console.log(w)
-			// 	console.log(midLookup[w.mid])
-			// 	console.log(labelLookup[w.mid])
-
-			// }
 
 		}
 
 
 	}
-
-	// for (let b of doc.blocks){
-
-	// 	for (let w of b.words){
-
-	// 		if (w.eId){
-
-	// 			console.log(doc.entities[w.eId])
-
-	// 		}
-
-	// 	}
-
-	// }
-
-
-	// console.log(labelLookup)
-
-
-
 
 
 
@@ -942,12 +894,6 @@ app.get('/document/:docId/instanceof/start', async function (req, res) {
 
 		doc_index.instanceOfStatus = `Done`
 		fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(doc_index,null,2));
-
-
-
-
-
-
 
 	});
 
@@ -1224,9 +1170,6 @@ app.get('/document/:docId/uploadtext',  async function (req, res) {
 			errors.push('error - ' + error.toString())
 
 		}
-
-
-		console.log(blockText)
 
 
 	}

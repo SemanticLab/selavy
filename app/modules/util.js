@@ -1,3 +1,4 @@
+const config  = require('../../config').config
 
 const fs  = require('fs')
 
@@ -90,13 +91,13 @@ exports.enrichNERBlocks = function(blocks){
 						for (let r of existingRanges){
 
 							if (m.text.beginOffset >= r[0] && m.text.beginOffset+useMId.length <= r[1] && m.text.content != r[2]){
-								console.log("Looks like ", m.text.content, `(${m.text.beginOffset},${m.text.beginOffset+useMId.length})` ,'oever laps with', r[2], `(${r[0]},${r[1]})`)
-								console.log(m)
+								// console.log("Looks like ", m.text.content, `(${m.text.beginOffset},${m.text.beginOffset+useMId.length})` ,'oever laps with', r[2], `(${r[0]},${r[1]})`)
+								// console.log(m)
 
-								console.log(r[3])
-								console.log('------')
+								// console.log(r[3])
+								// console.log('------')
 								continue
-								console.log('shouldnetberehere')
+
 							}
 
 						}
@@ -240,7 +241,9 @@ exports.enrichNERBlocks = function(blocks){
 
 exports.gatherBaseData = async function(qid){
 
-	let url = 'https://query.semlab.io/proxy/wdqs/bigdata/namespace/wdq/sparql'
+	let url = config.wikibaseSPARQLEndpoint 
+
+
 
 	let sparql = `
 		SELECT ?item ?itemLabel ?instanceOf ?instanceOfLabel
@@ -250,7 +253,7 @@ exports.gatherBaseData = async function(qid){
 		  VALUES ?item {wd:${qid}}
 
 		  optional{
-		    ?item wdt:P1 ?instanceOf
+		    ?item wdt:${config.wikibaseInstanceOfPID} ?instanceOf
 		  }
 		  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
 		}
@@ -266,7 +269,7 @@ exports.gatherBaseData = async function(qid){
 			searchParams:searchParams,
 			headers: {
 				'Accept' : 'application/json',
-				'User-Agent': 'USER thisismattmiller - Semlab'				  
+				'User-Agent': 'Selavy - gatherBaseData'				  
 			}
 
 		});
@@ -303,13 +306,13 @@ exports.gatherBaseData = async function(qid){
 
 exports.returnEntity = async function(qid){
 
-	let url = 'https://base.semlab.io/wiki/Special:EntityData/'+ qid + '.json'
+	let url = config.wikibaseEntityDataBase + qid + '.json'
 
 	try {
 		const response = await got(url,{
 			headers: {
 				'Accept' : 'application/json',
-				'User-Agent': 'USER thisismattmiller - Semlab'				  
+				'User-Agent': 'Selavy - returnEntity'				  
 			}
 
 		});
@@ -336,13 +339,15 @@ exports.returnEntity = async function(qid){
 
 exports.returnProjects = async function(){
 
-	let url = 'https://query.semlab.io/proxy/wdqs/bigdata/namespace/wdq/sparql'
+
+	let url = config.wikibaseSPARQLEndpoint 
+
 
 	let sparql = `
 		SELECT ?item ?itemLabel 
 		WHERE 
 		{
-		  ?item wdt:P1 wd:Q19064. # Must be of a cat
+		  ?item wdt:${config.wikibaseInstanceOfPID} wd:${config.wikibaseProjectQID}. 
 		  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". } # Helps get the label in your language, if not, then en language
 		}
 	`
@@ -355,7 +360,7 @@ exports.returnProjects = async function(){
 			searchParams:searchParams,
 			headers: {
 				'Accept' : 'application/json',
-				'User-Agent': 'USER thisismattmiller - Semlab'				  
+				'User-Agent': 'Selavy - returnProjects'				  
 			}
 
 		});
@@ -402,7 +407,7 @@ exports.returnProjects = async function(){
 
 exports.returnPlist = async function(){
 
-	let url = 'https://query.semlab.io/proxy/wdqs/bigdata/namespace/wdq/sparql'
+	let url = config.wikibaseSPARQLEndpoint 
 
 	let sparql = `
 		SELECT ?property ?propertyLabel ?wbtype ?propertyDescription (GROUP_CONCAT(DISTINCT(?altLabel); separator = ", ") AS ?altLabel_list) WHERE {
@@ -423,7 +428,7 @@ exports.returnPlist = async function(){
 			searchParams:searchParams,
 			headers: {
 				'Accept' : 'application/json',
-				'User-Agent': 'USER thisismattmiller - Semlab'				  
+				'User-Agent': 'Selavy - returnPlist'				  
 			}
 
 		});
@@ -476,11 +481,11 @@ exports.returnPlist = async function(){
 
 exports.returnClasses = async function(){
 
-	let url = 'https://query.semlab.io/proxy/wdqs/bigdata/namespace/wdq/sparql'
+	let url = config.wikibaseSPARQLEndpoint 
 
 	let sparql = `
 		select ?item ?itemLabel where{
-		  ?item wdt:P1 wd:Q19063
+		  ?item wdt:${config.wikibaseInstanceOfPID} wd:${config.wikibaseClassQID}
 		  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
 		}
 	`
@@ -493,7 +498,7 @@ exports.returnClasses = async function(){
 			searchParams:searchParams,
 			headers: {
 				'Accept' : 'application/json',
-				'User-Agent': 'USER thisismattmiller - Semlab'				  
+				'User-Agent': 'Selavy - returnClasses'				  
 			}
 
 		});
@@ -515,9 +520,6 @@ exports.returnClasses = async function(){
 			}
 
 			
-			// rdict.instanceOf = d.results.bindings[0].instanceOf.value.split('/entity/')[1]
-			// rdict.instanceOfLabel = d.results.bindings[0].instanceOfLabel.value
-
 
 
 		}
@@ -549,12 +551,12 @@ exports.publishEntity = async function(req, res){
 		return false
 	}
 
-	// res.status(200).json({'qid':'Q12345', 'instanceOf':'Q20637'})
+	
 
 
 
 	let generalConfig = {
-	  instance: 'http://base.semlab.io/',
+	  instance: config.wikibaseUrl,
 	  credentials: {
 	    username: req.session.wbus,
 	    password: req.session.wbpw 
@@ -565,7 +567,8 @@ exports.publishEntity = async function(req, res){
 
 	try{
 
-		const { entity } = await wbEdit.entity.create({
+
+		let e = {
 		  type: 'item',	
 		  // All the rest is optional but one of labels, descriptions, aliases, claims, or sitelinks must be set
 		  labels: {
@@ -573,81 +576,22 @@ exports.publishEntity = async function(req, res){
 		    en: req.body.label,
 		  },
 		  descriptions: {
-		    // // Set a description
-		    // en: 'a new description',
-		    // // Remove a description
-		    // fr: null
 		  },
 		  aliases: {
-		    // // Pass aliases as an array
-		    // en: [ 'foo', 'bar' ],
-		    // // Or a single value
-		    // de: 'buzz',
-		    // // /!\ for any language specified, the values you pass will overwrite the existing values,
-		    // // which means that the following empty array will remove all existing aliases in French.
-		    // fr: [],
-		    // // To add aliases without removing existing values, you must set 'add=true'
-		    // nl: [
-		    //   { value: 'bul', add: true },
-		    //   { value: 'groz', add: true },
-		    // ],
-		    // // The same effect of clearing all aliases in a given language can be optained by passing null
-		    // es: null
 		  },
 		  claims: {
-		    // Pass values as an array
-		    P1: req.body.instanceOf,
-		    // // Or a single value
-		    // P2002: 'bulgroz',
-		    // // Or a rich value object, like a monolingual text
-		    // P2093: { text: 'Author Authorson', language: 'en' },
-		    // // Or even an array of mixed simple values and rich object values
-		    // P1106: [ 42, { amount: 9001, unit: 'Q7727' } ],
-		    // // Add statements with special snaktypes ('novalue' or 'somevalue')
-		    // P626: { snaktype: 'somevalue' },
-		    // // or special rank (Default: 'normal'. Possible values: 'preferred' or 'deprecated')
-		    // P6089: { rank: 'preferred', value: 123 },
-		    // // Add qualifiers and references to value objects
-		    // P369: [
-		    //   // Qualifier values can also be passed in those different forms
-		    //   {
-		    //     value: 'Q5111731',
-		    //     qualifiers: {
-		    //       P580: '1789-08-04'
-		    //       P1416: [ 'Q13406268', 'Q32844021' ],
-		    //       P1106: { amount: 9001, unit: 'Q7727', lowerBound: 9000, upperBound: 9315 }
-		    //     }
-		    //   },
-		    //   // References can be passed as a single record group
-		    //   { value: 'Q2622004', references: { P143: 'Q8447' } },
-		    //   // or as multiple records
-		    //   {
-		    //     value: 'Q2622009',
-		    //     references: [
-		    //       { P855: 'https://example.org', P143: 'Q8447' },
-		    //       { P855: 'https://example2.org', P143: 'Q8447' }
-		    //     ]
-		    //   }
-		    // ],
-		    // P1114: [
-		    //   // Edit an existing claim
-		    //   // /!\ Beware that while editing an existing claim,
-		    //   //     anything omitted (rank, qualifiers, or references) will be omitted!!
-		    //   { id: 'Q4115189$BC5F4F72-5B49-4991-AB0F-5CC8D4AAB99A', value: 123 },
-		    //   // Remove an existing claim
-		    //   { id: 'Q4115189$afc56f6c-4e91-c89d-e287-d5691aeb063a', remove: true }
-		    // ]
+		    // we set this below since we need to pull what P number to use to say instance of from the config
 		  },
 		  sitelinks: {
-		    // // Set a sitelink
-		    // frwiki: 'eviv bulgroz',
-		    // // Remove a sitelink
-		    // eswikisource: null
 		  },
-
 		  // For convenience, the summary and baserevid can also be passed from this edit object
 		  summary: 'Selavy'
-		})
+		}
+
+		e.claims[config.wikibaseInstanceOfPID] = req.body.instanceOf
+
+
+		const { entity } = await wbEdit.entity.create(e)
 
 
 		res.status(200).json({ qid: entity.id, instanceOf: req.body.instanceOf })
@@ -658,25 +602,6 @@ exports.publishEntity = async function(req, res){
 
 	}
 
-
-
-	// 	wbEdit.alias.add({
-	// 		id: 'Q21191',
-	// 		language: 'fr',
-	// 		value: 'test'
-	// 	}).then(()=>{
-
-	// 		req.session.wbpw = req.body.password
-	// 		req.session.wbus = req.body.username
-	// 		req.session.wbVerified = true
-
-	// 		res.render('index',{error:false, wbVerified:req.session.wbVerified, wbDontUse:req.session.wbDontUse})
-
-	// 	}).catch((error)=>{
-
-	// 		res.render('index',{error:error.message, wbVerified:req.session.wbVerified, wbDontUse:req.session.wbDontUse})
-
-	// 	})
 
 
 }
@@ -713,7 +638,7 @@ exports.unpublishTriple = async function(blockId,tripleId, doc, req){
 	}
 
 	let generalConfig = {
-	  instance: 'http://base.semlab.io/',
+	  instance: config.wikibaseUrl,
 	  credentials: {
 	    username: req.session.wbus,
 	    password: req.session.wbpw 
@@ -847,7 +772,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
 	let generalConfig = {
-	  instance: 'http://base.semlab.io/',
+	  instance: config.wikibaseUrl,
 	  credentials: {
 	    username: req.session.wbus,
 	    password: req.session.wbpw 
@@ -901,13 +826,10 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
 				claimID = claim.id
-				console.log(claim.references)
-
 
 				for (let ref of claim.references){
-					if (ref.snaks.P26){
-						for (let val of ref.snaks.P26){
-							console.log(val.datavalue)	
+					if (ref.snaks[config.wikibaseReferenceBlockPID]){
+						for (let val of ref.snaks[config.wikibaseReferenceBlockPID]){
 							if (val.datavalue && val.datavalue.value){
 								if (val.datavalue.value.id == doc.blocks[blockId].qid){
 									hasRightRef = true
@@ -999,7 +921,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 								value: ctxO
 							})
 
-							console.log('rrr',rrr)
+
 							if (rrr.success && rrr.success == 1){
 
 								// it was created, store the id
@@ -1064,12 +986,19 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 			try{
 				const guid = claimID
-				const rr = await wbEdit.reference.set({
+
+				[config.wikibaseReferenceBlockPID]
+
+				let useRef = {
 				  guid,
 				  snaks: {
-				    P26: blockQId,
+				    // P26: blockQId,
 				  }
-				})
+				}
+
+				useRef.snaks[config.wikibaseReferenceBlockPID] = blockQId
+
+				const rr = await wbEdit.reference.set(useRef)
 
 				if (rr.success && rr.success == 1){
 
@@ -1168,12 +1097,19 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 			try{
 				const guid = claimID
-				const rr = await wbEdit.reference.set({
+
+
+				let useRef2 = {
 				  guid,
 				  snaks: {
-				    P26: blockQId,
+				    // P26: blockQId,
 				  }
-				})
+				}
+
+				useRef2.snaks[config.wikibaseReferenceBlockPID] = blockQId
+
+
+				const rr = await wbEdit.reference.set(useRef2)
 
 				if (rr.success && rr.success == 1){
 
@@ -1236,9 +1172,9 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 						value: ctxO
 					})
 
-					console.log('rrr',rrr)
-					console.log('--------')
-					console.log(JSON.stringify(rrr,null,2))
+					// console.log('rrr',rrr)
+					// console.log('--------')
+					// console.log(JSON.stringify(rrr,null,2))
 					if (rrr.success && rrr.success == 1){
 
 						// it was created, store the id
@@ -1300,9 +1236,9 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
 
-	console.log(doc.triples[blockId][tripleId])
+	// console.log(doc.triples[blockId][tripleId])
 
-	console.log(subjectData)
+	// console.log(subjectData)
 
 	return doc
 
@@ -1313,8 +1249,8 @@ exports.publishBlock = async function(doc,blockId, req){
 
 
 
-	let blockType = ['Q2013']
-	let textUrl = `https://semlab.s3.amazonaws.com/texts/${doc.publish.qid}/${blockId}.txt`
+	let blockType = [config.wikibaseBlockClassQID]
+	let textUrl = `${awsS3Path}${doc.publish.qid}/${blockId}.txt`
 
 	let blockText = doc.blocks[blockId].text
 
@@ -1375,110 +1311,55 @@ exports.publishBlock = async function(doc,blockId, req){
 		}
 	}
 
-	console.log("associatedEntites before")
-	console.log(associatedEntites)
+	// console.log("associatedEntites before")
+	// console.log(associatedEntites)
 	associatedEntites = associatedEntites.filter(function(elem, pos) {
 	    return associatedEntites.indexOf(elem) == pos;
 	})
 
-	console.log("associatedEntites after")
-	console.log(associatedEntites)
+	// console.log("associatedEntites after")
+	// console.log(associatedEntites)
 
 
 
 
 	let payload = {
 		  type: 'item',	
-		  // All the rest is optional but one of labels, descriptions, aliases, claims, or sitelinks must be set
 		  labels: {
-		    // Set a label
 		    en: 'Block ' + blockId + ' of ' + doc.publish.docLabel,
 		  },
 		  descriptions: {
-		    // // Set a description
-		    en: 'Block ' + blockId + ' of ' + doc.publish.docLabel,
-		    // // Remove a description
-		    // fr: null
+			    en: 'Block ' + blockId + ' of ' + doc.publish.docLabel,
 		  },
 		  aliases: {
-		    // // Pass aliases as an array
-		    // en: [ 'foo', 'bar' ],
-		    // // Or a single value
-		    // de: 'buzz',
-		    // // /!\ for any language specified, the values you pass will overwrite the existing values,
-		    // // which means that the following empty array will remove all existing aliases in French.
-		    // fr: [],
-		    // // To add aliases without removing existing values, you must set 'add=true'
-		    // nl: [
-		    //   { value: 'bul', add: true },
-		    //   { value: 'groz', add: true },
-		    // ],
-		    // // The same effect of clearing all aliases in a given language can be optained by passing null
-		    // es: null
 		  },
 		  claims: {
-		    // Pass values as an array
-		    P1: blockType,
-		    P11: doc.publish.project, // part of project
-		    P24: [doc.publish.qid], // parent document
-		    P17: blockId.toString(), // local id
-		    P19: blockText, // text
-		    P20: textUrl, // url
-		    P21: associatedEntites,
-
-
-
-		    // // Or a single value
-		    // P2002: 'bulgroz',
-		    // // Or a rich value object, like a monolingual text
-		    // P2093: { text: 'Author Authorson', language: 'en' },
-		    // // Or even an array of mixed simple values and rich object values
-		    // P1106: [ 42, { amount: 9001, unit: 'Q7727' } ],
-		    // // Add statements with special snaktypes ('novalue' or 'somevalue')
-		    // P626: { snaktype: 'somevalue' },
-		    // // or special rank (Default: 'normal'. Possible values: 'preferred' or 'deprecated')
-		    // P6089: { rank: 'preferred', value: 123 },
-		    // // Add qualifiers and references to value objects
-		    // P369: [
-		    //   // Qualifier values can also be passed in those different forms
-		    //   {
-		    //     value: 'Q5111731',
-		    //     qualifiers: {
-		    //       P580: '1789-08-04'
-		    //       P1416: [ 'Q13406268', 'Q32844021' ],
-		    //       P1106: { amount: 9001, unit: 'Q7727', lowerBound: 9000, upperBound: 9315 }
-		    //     }
-		    //   },
-		    //   // References can be passed as a single record group
-		    //   { value: 'Q2622004', references: { P143: 'Q8447' } },
-		    //   // or as multiple records
-		    //   {
-		    //     value: 'Q2622009',
-		    //     references: [
-		    //       { P855: 'https://example.org', P143: 'Q8447' },
-		    //       { P855: 'https://example2.org', P143: 'Q8447' }
-		    //     ]
-		    //   }
-		    // ],
-		    // P1114: [
-		    //   // Edit an existing claim
-		    //   // /!\ Beware that while editing an existing claim,
-		    //   //     anything omitted (rank, qualifiers, or references) will be omitted!!
-		    //   { id: 'Q4115189$BC5F4F72-5B49-4991-AB0F-5CC8D4AAB99A', value: 123 },
-		    //   // Remove an existing claim
-		    //   { id: 'Q4115189$afc56f6c-4e91-c89d-e287-d5691aeb063a', remove: true }
-		    // ]
+		    // P1: blockType,
+		    // P11: doc.publish.project, // part of project
+		    // P24: [doc.publish.qid], // parent document
+		    // P17: blockId.toString(), // local id
+		    // P19: blockText, // text
+		    // P20: textUrl, // url
+		    // P21: associatedEntites,
 		  },
 		  sitelinks: {
-		    // // Set a sitelink
-		    // frwiki: 'eviv bulgroz',
-		    // // Remove a sitelink
-		    // eswikisource: null
 		  },
-
 		  // For convenience, the summary and baserevid can also be passed from this edit object
 		  summary: 'Selavy'
 		}
+
+
+		payload.claims[config.wikibaseInstanceOfPID] = blockType
+		payload.claims[config.wikibasePartOfProjectPID] = doc.publish.project
+		payload.claims[config.wikibaseParentDocumentPID] = [doc.publish.qid]
+		payload.claims[config.wikibaseLocalIdPID] = blockId.toString()
+		payload.claims[config.wikibaseBlockTextPID] = blockText
+		payload.claims[config.wikibaseBlockTextURLPID] = textUrl
+		payload.claims[config.wikibaseAssociatedEntitiesPID] = associatedEntites
+
+
+
+
 
 
 
@@ -1489,11 +1370,11 @@ exports.publishBlock = async function(doc,blockId, req){
 	}
 
 
-	console.log(payload)
+	// console.log(payload)
 
 
 	let generalConfig = {
-	  instance: 'http://base.semlab.io/',
+	  instance: config.wikibaseUrl,
 	  credentials: {
 	    username: req.session.wbus,
 	    password: req.session.wbpw 
@@ -1551,7 +1432,7 @@ exports.deleteBlock = async function(doc,blockId, req){
 
 
 		let generalConfig = {
-		  instance: 'http://base.semlab.io/',
+		  instance: config.wikibaseUrl,
 		  credentials: {
 		    username: req.session.wbus,
 		    password: req.session.wbpw 
@@ -1816,15 +1697,16 @@ exports.condenseEntities = async function(blocks,docId){
 
 		let qid = wiki[w].wikidata
 
-		doc_index.entityStatus = `Found ${Object.keys(allEntities).length} entities | Resolving to Semlab Base ${counterSemWiki++}/${Object.keys(wiki).length} `
+		doc_index.entityStatus = `Found ${Object.keys(allEntities).length} entities | Resolving to WikiBase ${counterSemWiki++}/${Object.keys(wiki).length} `
 		fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(doc_index,null,2));
 
+		
+		let url = config.wikibaseSPARQLEndpoint 
 
-		let url = 'https://query.semlab.io/proxy/wdqs/bigdata/namespace/wdq/sparql'
-		console.log(url)
+
 		let sparql = `
 			select DISTINCT * where {
-			  { ?s wdt:P8 "${qid}" } UNION { ?s wdt:P9 <https://www.wikidata.org/wiki/${qid}> }
+			  { ?s wdt:${config.wikibaseWikidataIDPID} "${qid}" } UNION { ?s wdt:P9 <https://www.wikidata.org/wiki/${qid}> }
 			}
 		`
 		const searchParams = new URLSearchParams([['query', sparql]]);
@@ -1835,7 +1717,7 @@ exports.condenseEntities = async function(blocks,docId){
 				searchParams:searchParams,
 				headers: {
 					'Accept' : 'application/json',
-					'User-Agent': 'USER thisismattmiller - Semlab'				  
+					'User-Agent': 'Selavy'				  
 				}
 
 			});
@@ -1884,7 +1766,7 @@ exports.condenseEntities = async function(blocks,docId){
 			
 				// ?action=wbsearchentities&search=Marshall%20McLuhan&format=json&language=en&uselang=en&type=item
 
-				doc_index.entityStatus = `Found ${Object.keys(allEntities).length} entities | Searching Semlab Base by string ${counterTextSearch++}/${counterTextSearchTotal} `
+				doc_index.entityStatus = `Found ${Object.keys(allEntities).length} entities | Searching Wikibase by string ${counterTextSearch++}/${counterTextSearchTotal} `
 				fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(doc_index,null,2));
 
 
@@ -1958,7 +1840,7 @@ exports.condenseEntities = async function(blocks,docId){
 
 	}
 
-	console.log("HERER VUUIIII")
+
 	// doc_index.entityStatus = `Done`
 	// fs.writeFileSync('/tmp_data/'+docId+'.index.json', JSON.stringify(doc_index,null,2));
 
