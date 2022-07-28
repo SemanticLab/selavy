@@ -828,18 +828,21 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 				claimID = claim.id
 				console.log(claim)
 				console.log(claim.references)
-				for (let ref of claim.references){
-					if (ref.snaks[config.wikibaseReferenceBlockPID]){
-						for (let val of ref.snaks[config.wikibaseReferenceBlockPID]){
-							if (val.datavalue && val.datavalue.value){
-								if (val.datavalue.value.id == doc.blocks[blockId].qid){
-									hasRightRef = true
+				// if it even has references
+				if (claim.references){
+					// check all of them
+					for (let ref of claim.references){
+						if (ref.snaks[config.wikibaseReferenceBlockPID]){
+							for (let val of ref.snaks[config.wikibaseReferenceBlockPID]){
+								if (val.datavalue && val.datavalue.value){
+									if (val.datavalue.value.id == doc.blocks[blockId].qid){
+										hasRightRef = true
+									}
 								}
-							}
-						}						
-					}					
+							}						
+						}					
+					}
 				}
-
 
 				// loop through the qualifiers thatare supposed to be ther and see if they are
 
