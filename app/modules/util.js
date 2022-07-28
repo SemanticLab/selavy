@@ -826,7 +826,8 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
 				claimID = claim.id
-
+				console.log(claim)
+				console.log(claim.references)
 				for (let ref of claim.references){
 					if (ref.snaks[config.wikibaseReferenceBlockPID]){
 						for (let val of ref.snaks[config.wikibaseReferenceBlockPID]){
