@@ -1037,6 +1037,10 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 
 
 
+		}else{
+
+			doc.triples[blockId][tripleId].status = "published"
+			
 		}
 
 
