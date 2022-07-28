@@ -991,7 +991,7 @@ exports.publishTriple = async function(blockId,tripleId, doc, req){
 			try{
 				const guid = claimID
 
-				[config.wikibaseReferenceBlockPID]
+				// [config.wikibaseReferenceBlockPID]
 
 				let useRef = {
 				  guid,
