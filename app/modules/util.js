@@ -1258,7 +1258,7 @@ exports.publishBlock = async function(doc,blockId, req){
 
 
 	let blockType = [config.wikibaseBlockClassQID]
-	let textUrl = `${awsS3Path}${doc.publish.qid}/${blockId}.txt`
+	let textUrl = `${config.awsS3Path}${doc.publish.qid}/${blockId}.txt`
 
 	let blockText = doc.blocks[blockId].text
 
