@@ -223,7 +223,6 @@
                     
 
 
-
                     <template v-for="word in block.words" :key="'word'+keyCounter">
 
                         <span @click="publishedEntityClick(doc.entities[word.eId],block,word)" v-bind:class="[{ 'is': true }, {'search-hit': (word.searchHit)}, 'word-ner', 'word-ner-published']" :id="'b'+block.id+'-'+word.order" v-if="word.ner && doc.entities[word.eId] && doc.entities[word.eId].published" v-bind:style="{ 'background-color': returnInstanceOfColor(doc.entities[word.eId])}">                            
@@ -239,6 +238,9 @@
                             {{replaceEncodedChars(word.orginalText)+" "}}
                         </span>
 
+                        <template v-if="word.lineBreakNext > 0">
+                            <br v-for="x,idx in Array.apply(null, Array(word.lineBreakNext)).map(function () {})"/>
+                        </template>
 
                     </template>
 
@@ -727,7 +729,7 @@
         computed: {
          publishedActiveFilterTextInput: {
             get() {
-            console.log('heeeeyy')
+            
               return this.publishedActiveFilterText
             },
             set(val) {
@@ -784,9 +786,44 @@
 		  .then(data => {
 		  	
 		  	self.doc = data
-		  	console.log(self.doc)
-            console.log(JSON.parse(JSON.stringify(self.doc)))
-            console.log(self.doc.entities)
+		  	// console.log(self.doc)
+            // console.log(JSON.parse(JSON.stringify(self.doc)))
+            // console.log(self.doc.entities)
+            // console.log("WE GOT BLOCKS",this.doc.blocks)
+
+            // Do a process where we check for line breaks after words to make the display better
+            for (let block of this.doc.blocks){
+                let blockText = JSON.parse(JSON.stringify(block.text))
+                for (let word of block.words){
+                    let pos = blockText.indexOf(word.orginalText)                
+ 
+                    blockText = blockText.substring(pos)
+
+                    word.lineBreakNext = 0
+
+                    if (blockText.substring(word.orginalText.length,word.orginalText.length+1) == "\n" ){
+                        word.lineBreakNext = 1
+                    }
+                    if (blockText.substring(word.orginalText.length,word.orginalText.length+2) == "\n\n" ){
+                        word.lineBreakNext = 2
+                    }
+                    if (blockText.substring(word.orginalText.length,word.orginalText.length+3) == "\n\n\n" ){
+                        word.lineBreakNext = 3
+                    }
+                    if (blockText.substring(word.orginalText.length,word.orginalText.length+4) == "\n\n\n\n" ){
+                        word.lineBreakNext = 4
+                    }                    
+
+                }
+
+
+
+            }
+
+
+
+
+
             self.blockTriples = self.doc.triples
             if (!self.blockTriples){
                 self.blockTriples = {}
@@ -1815,7 +1852,6 @@
 
             // ask to create it
 
-            console.log(instanceOf)
 
             var xhr = new XMLHttpRequest();
             xhr.open("POST", `/publish`, true);
@@ -1841,7 +1877,7 @@
                         self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki = {}
                     }
 
-                    console.log("instanceOf",instanceOf)
+                    
                     self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki.semlab = d.qid
                     self.doc.entities[self.publishNewEntityInfo.entity.eId].wiki.semlabInstanceOf= {
                       "instanceOf": instanceOf[0].id,
@@ -1929,7 +1965,7 @@
 
             }
 
-            console.log(this.publishNewEntityInfo.occurrences)
+            
 
 
         },
@@ -1946,9 +1982,9 @@
 
         removeBlockTriple: function(blockId, index, event){
 
-            console.log(event.target.parentElement)
+            
             this.blockTriples[blockId].splice(index, 1)
-            console.log(this.blockTriples)
+            
             // event.target.parentElement.style.display='none'
             this.needsSaving=true
         },
@@ -1957,7 +1993,7 @@
 
             this.activeContext = {blockId:blockId,index:index}
             document.body.classList.add('cursor-active-predicate')
-            console.log(this.activeContext)
+            
         },
 
         clearActiveTriple:function(){
@@ -1988,7 +2024,7 @@
             this.publishedEntityInfo = null
             this.removePaint = false
 
-            console.log(this.activePaintEntity, this.activePaintEntity)
+            
 
             if (this.activePaintEntity !== null && this.activePaintEntity == entity.eId){
                 this.stopPaint()

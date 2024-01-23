@@ -3,7 +3,7 @@ exports.config = {
 
 	// wikibase API config
 	// this is the base url to your wikibase installation, the API module builds the API urls from this base
-	wikibaseUrl : 'http://base.semlab.io/',
+	wikibaseUrl : 'https://base.semlab.io/',
 
 
 	// this is a item in your wikibase that can be edited for test reasons, 
