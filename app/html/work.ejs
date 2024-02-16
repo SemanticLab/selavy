@@ -795,6 +795,12 @@
             for (let block of this.doc.blocks){
                 let blockText = JSON.parse(JSON.stringify(block.text))
                 for (let word of block.words){
+                   
+                    if (!word.orginalText){
+                        word.lineBreakNext = 0
+                        continue
+                    }
+
                     let pos = blockText.indexOf(word.orginalText)                
  
                     blockText = blockText.substring(pos)
